@@ -1,122 +1,86 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { parseSCL } from './lib/parseSCL'
+import { compareIED } from './lib/compareIED'
+import FileUploadPanel from './components/FileUploadPanel'
+import ComparisonReport from './components/ComparisonReport'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [ssdData, setSsdData] = useState(null)
+  const [icdData, setIcdData] = useState(null)
+  const [selectedIEDName, setSelectedIEDName] = useState(null)
+  const [report, setReport] = useState(null)
+  const [error, setError] = useState(null)
+
+  const handleSSDLoad = (xmlString) => {
+    try {
+      const parsed = parseSCL(xmlString)
+      setSsdData(parsed)
+      setReport(null)
+      setError(null)
+    } catch (e) {
+      setError('Erreur lors du parsing du SSD : ' + e.message)
+    }
+  }
+
+  const handleICDLoad = (xmlString) => {
+    try {
+      const parsed = parseSCL(xmlString)
+      setIcdData(parsed)
+      setReport(null)
+      setError(null)
+    } catch (e) {
+      setError('Erreur lors du parsing de l\'ICD : ' + e.message)
+    }
+  }
+
+  const handleCompare = (iedName) => {
+    if (!ssdData || !icdData) return
+    try {
+      const specIED = ssdData.ieds.find((i) => i.name === iedName)
+      const realIED = icdData.ieds[0]
+      if (!specIED) throw new Error(`IED "${iedName}" introuvable dans le SSD`)
+      const result = compareIED(specIED, realIED, ssdData.typeTemplates, icdData.typeTemplates)
+      setSelectedIEDName(iedName)
+      setReport(result)
+      setError(null)
+    } catch (e) {
+      setError('Erreur lors de la comparaison : ' + e.message)
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="min-h-screen bg-slate-950 text-slate-100" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+      {/* Header */}
+      <header className="border-b border-slate-800 px-8 py-4 flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-8 bg-cyan-400" />
+          <div>
+            <h1 className="text-lg font-bold tracking-widest text-cyan-400 uppercase">IEC 61850</h1>
+            <p className="text-xs text-slate-500 tracking-widest uppercase">IED Compatibility Checker</p>
+          </div>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
+      <main className="px-8 py-6 space-y-6">
+        {/* Panneau de chargement des fichiers */}
+        <FileUploadPanel
+          ssdData={ssdData}
+          icdData={icdData}
+          onSSDLoad={handleSSDLoad}
+          onICDLoad={handleICDLoad}
+          onCompare={handleCompare}
+        />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* Erreur */}
+        {error && (
+          <div className="border border-red-500 bg-red-950/30 px-4 py-3 text-red-400 text-sm">
+            ⚠ {error}
+          </div>
+        )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        {/* Rapport */}
+        {report && <ComparisonReport report={report} />}
+      </main>
+    </div>
   )
 }
-
-export default App
