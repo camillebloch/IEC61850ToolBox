@@ -1,3 +1,5 @@
+import { exportPDF, exportExcel } from '../lib/exportReport'
+
 const STATUS_COLORS = {
   conforme:      'text-emerald-400',
   partiel:       'text-amber-400',
@@ -44,6 +46,20 @@ export default function ComparisonReport({ report }) {
           <StatBox label="Conformes" value={summary.conformes} color="text-emerald-400" />
           <StatBox label="Partiels"  value={summary.partiels}  color="text-amber-400" />
           <StatBox label="Manquants" value={summary.manquants} color="text-red-400" />
+        </div>
+        <div className="flex gap-3 mt-4 pt-4 border-t border-slate-700">
+        <button
+            onClick={() => exportPDF(report)}
+            className="px-4 py-2 text-xs font-bold uppercase tracking-widest bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+        >
+            ↓ Export PDF
+        </button>
+        <button
+            onClick={() => exportExcel(report)}
+            className="px-4 py-2 text-xs font-bold uppercase tracking-widest bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+        >
+            ↓ Export Excel
+        </button>
         </div>
       </div>
 
