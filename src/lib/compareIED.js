@@ -21,6 +21,7 @@ export function compareIED(specIED, realIED, specTemplates, realTemplates) {
         status: 'manquant',
         logicalNodes: specLD.logicalNodes.map((ln) => ({
           ...ln,
+          key: `${ln.prefix}${ln.lnClass}${ln.inst}`, 
           status: 'manquant',
           dataObjects: ln.dataObjects.map((d) => ({ ...d, status: 'manquant' })),
         })),
@@ -90,7 +91,7 @@ function compareLogicalNodes(specLNs, realLNs, specTemplates, realTemplates) {
   const results = []
 
   for (const specLN of specLNs) {
-    const lnKey = `${specLN.prefix}${specLN.lnClass}${specLN.inst}`
+    const key = `${specLN.prefix}${specLN.lnClass}${specLN.inst}`
     const realLN = realLNs.find(
       (ln) => ln.lnClass === specLN.lnClass &&
               ln.inst === specLN.inst &&
@@ -99,36 +100,31 @@ function compareLogicalNodes(specLNs, realLNs, specTemplates, realTemplates) {
 
     if (!realLN) {
       results.push({
-        key: lnKey,
+        key,
         lnClass: specLN.lnClass,
         prefix: specLN.prefix,
         inst: specLN.inst,
         status: 'manquant',
         lnTypeMatch: false,
         dataObjects: specLN.dataObjects.map((d) => ({ ...d, status: 'manquant' })),
-        details: `LN ${lnKey} absent de l'ICD`,
+        details: `LN ${key} absent de l'ICD`,
       })
       continue
     }
 
-    // Comparer le lnType (comparaison stricte)
     const lnTypeMatch = specLN.lnType === realLN.lnType
-
-    // Comparer les DO
     const doResults = compareDataObjects(
       specLN.dataObjects, realLN.dataObjects,
       specLN.lnType, realLN.lnType,
       specTemplates, realTemplates
     )
 
-    const status = !lnTypeMatch
-      ? doResults.every((d) => d.status === 'conforme') ? 'partiel' : 'partiel'
-      : doResults.some((d) => d.status === 'manquant') ? 'manquant'
-      : doResults.some((d) => d.status === 'partiel') ? 'partiel'
+    const status = doResults.some((d) => d.status === 'manquant') ? 'manquant'
+      : doResults.some((d) => d.status === 'partiel') || !lnTypeMatch ? 'partiel'
       : 'conforme'
 
     results.push({
-      key: lnKey,
+      key,
       lnClass: specLN.lnClass,
       prefix: specLN.prefix,
       inst: specLN.inst,
@@ -137,9 +133,7 @@ function compareLogicalNodes(specLNs, realLNs, specTemplates, realTemplates) {
       specLnType: specLN.lnType,
       realLnType: realLN.lnType,
       dataObjects: doResults,
-      details: lnTypeMatch
-        ? null
-        : `lnType différent — spec: ${specLN.lnType} / réel: ${realLN.lnType}`,
+      details: lnTypeMatch ? null : `lnType différent — spec: ${specLN.lnType} / réel: ${realLN.lnType}`,
     })
   }
 
