@@ -16,3 +16,10 @@ Feature: Compare specification and implementation IED models
     When I compare the specification model with the real model
     Then the comparison summary should report 2 missing elements
     And the MMXU logical node should be marked as "partiel"
+
+  Scenario: Fully conform manual ICD
+    Given the generated fixture "TestCase1.ssd"
+    And the generated fixture "TestCase1_B1_match.icd"
+    When I compare the specification model with the real model
+    Then the comparison summary should report 11 conform elements
+    And the logical device status should be "conforme"
