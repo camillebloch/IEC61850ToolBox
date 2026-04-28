@@ -1,8 +1,9 @@
 import { readFileSync, existsSync } from 'node:fs'
-import test from 'node:test'
+import { before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseSCL } from '../src/lib/parseSCL.js'
 import { getFixturePath, getFixturesDir } from './fixtures/fixturePaths.js'
+import { ensureFixturesGenerated } from './helpers/ensureFixtures.js'
 
 function loadFixture(fileName) {
   const fixturePath = getFixturePath(fileName)
@@ -15,30 +16,36 @@ function loadFixture(fileName) {
   return readFileSync(fixturePath, 'utf-8')
 }
 
-test('parseSCL parses a valid SSD and extracts expected normalized data', () => {
-  const parsed = parseSCL(loadFixture('spec.ssd'))
+describe('parseSCL BDD specifications', () => {
+  before(() => {
+    ensureFixturesGenerated()
+  })
 
-  assert.deepEqual(parsed.header, { id: 'spec-header', version: '1', revision: '1' })
-  assert.equal(parsed.ieds.length, 1)
-  assert.equal(parsed.ieds[0].name, 'IED_SPEC')
-  assert.equal(parsed.ieds[0].logicalDevices.length, 1)
+  it('Given a valid SSD, When parsing, Then it returns the normalized model', () => {
+    const parsed = parseSCL(loadFixture('spec.ssd'))
 
-  const ld = parsed.ieds[0].logicalDevices[0]
-  assert.equal(ld.inst, 'LD0')
-  assert.equal(ld.logicalNodes.length, 2)
-  assert.equal(ld.datasets[0].name, 'DS_MEAS')
-  assert.equal(ld.reportControls[0].name, 'RCB1')
-  assert.equal(ld.gseControls[0].name, 'GCB1')
-})
+    assert.deepEqual(parsed.header, { id: 'spec-header', version: '1', revision: '1' })
+    assert.equal(parsed.ieds.length, 1)
+    assert.equal(parsed.ieds[0].name, 'IED_SPEC')
+    assert.equal(parsed.ieds[0].logicalDevices.length, 1)
 
-test('parseSCL throws a clear error when XML has no SCL root element', () => {
-  assert.throws(
-    () => parseSCL('<Root/>'),
-    /Fichier SCL invalide : élément racine <SCL> introuvable/
-  )
-})
+    const ld = parsed.ieds[0].logicalDevices[0]
+    assert.equal(ld.inst, 'LD0')
+    assert.equal(ld.logicalNodes.length, 2)
+    assert.equal(ld.datasets[0].name, 'DS_MEAS')
+    assert.equal(ld.reportControls[0].name, 'RCB1')
+    assert.equal(ld.gseControls[0].name, 'GCB1')
+  })
 
-test('fixtures are generated in the temporary fixture directory', () => {
-  const fixturePath = getFixturePath('spec.ssd')
-  assert.equal(fixturePath.startsWith(getFixturesDir()), true)
+  it('Given an invalid XML root, When parsing, Then it throws a clear SCL error', () => {
+    assert.throws(
+      () => parseSCL('<Root/>'),
+      /Fichier SCL invalide : élément racine <SCL> introuvable/
+    )
+  })
+
+  it('Given generated fixtures, When resolving fixture paths, Then they use the temporary directory', () => {
+    const fixturePath = getFixturePath('spec.ssd')
+    assert.equal(fixturePath.startsWith(getFixturesDir()), true)
+  })
 })

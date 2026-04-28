@@ -36,3 +36,21 @@ When code changes, test fixtures and assertions must be updated in the same pull
 3. Update unit/non-regression assertions.
 4. Run `npm run test` and `npm run lint`.
 5. Update technical documentation if test scope changed.
+
+
+## BDD test style
+
+Tests are written in a BDD structure (`describe`, `it`, `before`) using the native Node.js test API.
+This keeps tests readable while remaining close to Jest conventions.
+
+## Cucumber migration path for VS Code
+
+Feature drafts are available in `tests/features/`.
+
+If your environment allows installing additional npm packages, use this migration path:
+
+1. Install Cucumber (`npm install -D @cucumber/cucumber`).
+2. Add Cucumber scripts (`test:cucumber`, `test:cucumber:watch`).
+3. Install VS Code extension `alexkrechik.cucumberautocomplete`.
+4. Implement step definitions in `tests/features/steps/`.
+

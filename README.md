@@ -42,3 +42,20 @@ Then open the local URL displayed by Vite in your browser.
 Generated fixture XML files are written to your OS temporary directory (`iec61850toolbox-test-fixtures`) and are not tracked in Git.
 
 You can also use VS Code NPM Scripts view (Explorer > NPM Scripts) to launch `test`, `test:watch`, and `test:fixtures` without typing commands.
+
+
+## Cucumber integration in VS Code
+
+The repository now includes Gherkin feature drafts in `tests/features/*.feature` for a Cucumber migration preview.
+
+1. Install Cucumber as a dev dependency: `npm install -D @cucumber/cucumber`.
+2. Add scripts in `package.json`:
+   - `"test:cucumber": "cucumber-js tests/features/**/*.feature"`
+   - `"test:cucumber:watch": "cucumber-js --watch tests/features/**/*.feature"`
+3. Install VS Code extension **Cucumber (Gherkin) Full Support** (`alexkrechik.cucumberautocomplete`).
+4. Configure `.vscode/settings.json`:
+   - `"cucumberautocomplete.steps": ["tests/features/steps/**/*.js"]`
+   - `"cucumberautocomplete.syncfeatures": "tests/features/*.feature"`
+5. Implement JS step definitions in `tests/features/steps/` and run `npm run test:cucumber`.
+
+Current CI and local validation still use the native Node.js test runner until `@cucumber/cucumber` can be installed.
