@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test",
+    "test:watch": "node --test --watch",
+    "test:fixtures": "node tests/fixtures/generate-fixtures.mjs",
+    "pretest": "npm run test:fixtures"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
