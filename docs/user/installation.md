@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Node.js 20+
+- Node.js `^20.19.0 || >=22.12.0` (Node 21 is not supported)
 - npm 10+
 
 ## Install dependencies
