@@ -12,7 +12,9 @@
     "test:watch": "node --test --watch tests/*.test.js",
     "test:fixtures": "node tests/fixtures/generate-fixtures.mjs",
     "pretest": "npm run test:fixtures",
-    "test:bdd": "node --test tests/*.test.js"
+    "test:bdd": "node --test tests/*.test.js",
+    "test:cucumber": "cucumber-js tests/features/**/*.feature",
+    "test:cucumber:watch": "cucumber-js --watch tests/features/**/*.feature"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
@@ -25,6 +27,7 @@
     "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
+    "@cucumber/cucumber": "^12.8.2",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
