@@ -7,7 +7,6 @@ import ComparisonReport from './components/ComparisonReport'
 export default function App() {
   const [ssdData, setSsdData] = useState(null)
   const [icdData, setIcdData] = useState(null)
-  const [selectedIEDName, setSelectedIEDName] = useState(null)
   const [report, setReport] = useState(null)
   const [error, setError] = useState(null)
 
@@ -39,8 +38,7 @@ export default function App() {
       const specIED = ssdData.ieds.find((i) => i.name === iedName)
       const realIED = icdData.ieds[0]
       if (!specIED) throw new Error(`IED "${iedName}" introuvable dans le SSD`)
-      const result = compareIED(specIED, realIED, ssdData.typeTemplates, icdData.typeTemplates)
-      setSelectedIEDName(iedName)
+      const result = compareIED(specIED, realIED)
       setReport(result)
       setError(null)
     } catch (e) {

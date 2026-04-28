@@ -2,7 +2,7 @@
  * Compare un IED spécifié (SSD) avec un IED réel (ICD)
  * Les deux objets sont issus de parseSCL()
  */
-export function compareIED(specIED, realIED, specTemplates, realTemplates) {
+export function compareIED(specIED, realIED) {
   const results = {
     iedName: specIED.name,
     summary: { total: 0, conformes: 0, partiels: 0, manquants: 0 },
@@ -38,8 +38,7 @@ export function compareIED(specIED, realIED, specTemplates, realTemplates) {
       inst: specLD.inst,
       status: 'conforme',
       logicalNodes: compareLogicalNodes(
-        specLD.logicalNodes, realLD.logicalNodes,
-        specTemplates, realTemplates
+        specLD.logicalNodes, realLD.logicalNodes
       ),
       datasets: compareByName(specLD.datasets, realLD.datasets),
       reportControls: compareByName(specLD.reportControls, realLD.reportControls),
@@ -87,7 +86,7 @@ export function compareIED(specIED, realIED, specTemplates, realTemplates) {
 // ---------------------------------------------------------------------------
 // Comparaison des Logical Nodes
 // ---------------------------------------------------------------------------
-function compareLogicalNodes(specLNs, realLNs, specTemplates, realTemplates) {
+function compareLogicalNodes(specLNs, realLNs) {
   const results = []
 
   for (const specLN of specLNs) {
@@ -114,9 +113,7 @@ function compareLogicalNodes(specLNs, realLNs, specTemplates, realTemplates) {
 
     const lnTypeMatch = specLN.lnType === realLN.lnType
     const doResults = compareDataObjects(
-      specLN.dataObjects, realLN.dataObjects,
-      specLN.lnType, realLN.lnType,
-      specTemplates, realTemplates
+      specLN.dataObjects, realLN.dataObjects
     )
 
     const status = doResults.some((d) => d.status === 'manquant') ? 'manquant'
@@ -162,7 +159,7 @@ function compareLogicalNodes(specLNs, realLNs, specTemplates, realTemplates) {
 // ---------------------------------------------------------------------------
 // Comparaison des Data Objects
 // ---------------------------------------------------------------------------
-function compareDataObjects(specDOs, realDOs, specLnTypeId, realLnTypeId, specTemplates, realTemplates) {
+function compareDataObjects(specDOs, realDOs) {
   // Si même lnType → on compare directement par nom
   // Si lnType différent → on compare via les DataTypeTemplates respectifs
   const results = []

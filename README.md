@@ -21,6 +21,7 @@ Then open the local URL displayed by Vite in your browser.
   - [Configuration](docs/technical/configuration.md)
   - [Data model](docs/technical/data-model.md)
   - [API and core modules](docs/technical/api.md)
+  - [Testing strategy](docs/technical/testing.md)
 - Project history:
   - [Changelog](CHANGELOG.md)
 

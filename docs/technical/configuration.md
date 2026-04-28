@@ -13,6 +13,9 @@
 - `npm run build`: create production build.
 - `npm run preview`: preview production build.
 - `npm run lint`: run lint checks.
+- `npm run test:fixtures`: regenerate SSD/ICD test fixtures.
+- `npm run test`: run automated tests.
+- `npm run test:watch`: run tests in watch mode.
 
 ## Dependencies used by core features
 
