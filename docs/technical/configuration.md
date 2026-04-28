@@ -14,9 +14,8 @@
 - `npm run preview`: preview production build.
 - `npm run lint`: run lint checks.
 - `npm run test:fixtures`: regenerate SSD/ICD test fixtures.
-- `npm run test`: run automated tests (automatically runs `pretest`).
-- `npm run test:bdd`: run BDD-style automated tests.
-- `npm run test:watch`: run tests in watch mode.
+- `npm run test`: run Cucumber automated tests (automatically runs `pretest`).
+- `npm run test:watch`: run Cucumber tests in watch mode.
 - `npm run pretest`: regenerate fixtures in temporary directory before tests.
 
 ## Dependencies used by core features
@@ -30,10 +29,10 @@
 
 - GitHub Actions workflow: `.github/workflows/ci-tests.yml`.
 - Trigger: every `push` and every `pull_request` update.
-- Steps: `npm ci`, `npm run test:fixtures`, `npm run test`, `npm run lint`, `npm run build`.
+- Steps: `npm ci`, `npm run test`, `npm run lint`, `npm run build`.
 
 
-## BDD feature drafts
+## BDD feature coverage
 
-- Gherkin feature drafts are stored in `tests/features/`.
-- Step definition placeholders are documented in `tests/features/steps/README.md`.
+- Gherkin features are stored in `tests/features/`.
+- Executable step definitions are implemented in `tests/features/steps/scl.steps.js`.

@@ -8,13 +8,12 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test tests/*.test.js",
-    "test:watch": "node --test --watch tests/*.test.js",
+    "test": "cucumber-js tests/features/**/*.feature",
+    "test:watch": "cucumber-js --watch tests/features/**/*.feature",
     "test:fixtures": "node tests/fixtures/generate-fixtures.mjs",
     "pretest": "npm run test:fixtures",
-    "test:bdd": "node --test tests/*.test.js",
-    "test:cucumber": "cucumber-js tests/features/**/*.feature",
-    "test:cucumber:watch": "cucumber-js --watch tests/features/**/*.feature"
+    "test:cucumber": "npm run test",
+    "test:cucumber:watch": "npm run test:watch"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
