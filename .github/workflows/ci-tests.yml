@@ -28,11 +28,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Rebuild SSD/ICD fixtures to ensure generator stays in sync.
-      - name: Generate test fixtures
-        run: npm run test:fixtures
-
-      # Execute unit and non-regression tests.
+      # Execute Cucumber scenarios and generate fixtures via pretest.
       - name: Run automated tests
         run: npm run test
 

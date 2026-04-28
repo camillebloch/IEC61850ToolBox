@@ -1,15 +1,15 @@
-# Cucumber Step Definitions (Planned)
+# Cucumber Step Definitions
 
-This folder is reserved for Cucumber step definitions.
+This folder contains executable Cucumber step definitions used by the test suite.
 
-## Planned mapping
+## Implemented mapping
 
 - `Given the generated fixture "<file>"` → load generated XML from the temporary fixture directory.
 - `When I parse the SCL XML content` → call `parseSCL`.
 - `When I compare the specification model with the real model` → call `compareIED`.
 - `Then ...` assertions → validate parser/comparison output.
 
-## Why this is not active yet
+## Execution notes
 
-Cucumber runtime package (`@cucumber/cucumber`) must be installed to execute `.feature` files.
-In restricted environments where npm registry access is blocked, this folder acts as a migration blueprint.
+- Fixtures are generated automatically in Cucumber hooks through `tests/helpers/ensureFixtures.js`.
+- Run the suite with `npm run test`.
