@@ -1,19 +1,30 @@
 # IEC61850ToolBox
-Repository for different tools around IEC 61850
 
-# React + Vite
+IEC61850ToolBox is a web application used to compare an IEC 61850 system specification (`.ssd`) with an IED capability file (`.icd`) and identify structural compliance gaps.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Quick start
 
-Currently, two official plugins are available:
+```bash
+npm install
+npm run dev
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Then open the local URL displayed by Vite in your browser.
 
-## React Compiler
+## Documentation
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- User documentation:
+  - [Installation guide](docs/user/installation.md)
+  - [User guide](docs/user/guide.md)
+- Technical documentation:
+  - [Architecture](docs/technical/architecture.md)
+  - [Configuration](docs/technical/configuration.md)
+  - [Data model](docs/technical/data-model.md)
+  - [API and core modules](docs/technical/api.md)
+- Project history:
+  - [Changelog](CHANGELOG.md)
 
-## Expanding the ESLint configuration
+## Development
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Lint: `npm run lint`
+- Production build: `npm run build`

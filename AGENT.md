@@ -47,3 +47,16 @@ docs/
     configuration.md
     data-model.md
     api.md
+```
+
+### Changelog maintenance
+
+The repository must maintain a root `CHANGELOG.md` file.
+
+The changelog must track major user-facing evolutions, for example:
+
+- new features
+- deep updates to existing features
+- significant behavior changes
+
+Do not record every minor code edit. Group small related changes into clear, high-level functional summaries.
