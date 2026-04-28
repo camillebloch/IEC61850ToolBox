@@ -1,0 +1,44 @@
+name: CI Tests
+
+on:
+  # Validate every commit pushed to any branch.
+  push:
+    branches:
+      - '**'
+  # Validate every pull request update before merge.
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Fetch repository content for the workflow run.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install a stable Node.js runtime with npm cache enabled.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Install dependencies exactly as locked in package-lock.json.
+      - name: Install dependencies
+        run: npm ci
+
+      # Rebuild SSD/ICD fixtures to ensure generator stays in sync.
+      - name: Generate test fixtures
+        run: npm run test:fixtures
+
+      # Execute unit and non-regression tests.
+      - name: Run automated tests
+        run: npm run test
+
+      # Keep lint and build green as part of commit validation.
+      - name: Run lint
+        run: npm run lint
+
+      - name: Build application
+        run: npm run build

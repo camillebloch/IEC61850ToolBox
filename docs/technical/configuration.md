@@ -22,3 +22,10 @@
 - `fast-xml-parser`: parse SSD/ICD XML files.
 - `jspdf` + `jspdf-autotable`: PDF export.
 - `exceljs`: Excel export.
+
+
+## CI pipeline
+
+- GitHub Actions workflow: `.github/workflows/ci-tests.yml`.
+- Trigger: every `push` and every `pull_request` update.
+- Steps: `npm ci`, `npm run test:fixtures`, `npm run test`, `npm run lint`, `npm run build`.

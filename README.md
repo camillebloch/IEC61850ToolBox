@@ -29,3 +29,14 @@ Then open the local URL displayed by Vite in your browser.
 
 - Lint: `npm run lint`
 - Production build: `npm run build`
+
+## Run tests in VS Code
+
+1. Open the project folder in VS Code.
+2. Open the integrated terminal (`Terminal > New Terminal`).
+3. Run `npm install` once to install dependencies.
+4. Run `npm run test` to execute all tests once.
+5. Run `npm run test:watch` during development for automatic re-run.
+6. Optional: run `npm run test:fixtures` after changing test scenarios.
+
+You can also use VS Code NPM Scripts view (Explorer > NPM Scripts) to launch `test`, `test:watch`, and `test:fixtures` without typing commands.
