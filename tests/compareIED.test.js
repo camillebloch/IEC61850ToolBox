@@ -1,12 +1,19 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
+import { readFileSync, existsSync } from 'node:fs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { parseSCL } from '../src/lib/parseSCL.js'
 import { compareIED } from '../src/lib/compareIED.js'
+import { getFixturePath } from './fixtures/fixturePaths.js'
 
 function loadFixture(fileName) {
-  return readFileSync(path.resolve('tests/fixtures', fileName), 'utf-8')
+  const fixturePath = getFixturePath(fileName)
+
+  // Fail fast with an actionable message when fixture generation is missing.
+  if (!existsSync(fixturePath)) {
+    throw new Error(`Fixture not found: ${fixturePath}. Run "npm run test:fixtures" first.`)
+  }
+
+  return readFileSync(fixturePath, 'utf-8')
 }
 
 /**

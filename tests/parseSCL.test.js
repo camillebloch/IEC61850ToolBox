@@ -1,11 +1,18 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
+import { readFileSync, existsSync } from 'node:fs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { parseSCL } from '../src/lib/parseSCL.js'
+import { getFixturePath, getFixturesDir } from './fixtures/fixturePaths.js'
 
 function loadFixture(fileName) {
-  return readFileSync(path.resolve('tests/fixtures', fileName), 'utf-8')
+  const fixturePath = getFixturePath(fileName)
+
+  // Provide a clear guidance message if fixtures were not generated before tests.
+  if (!existsSync(fixturePath)) {
+    throw new Error(`Fixture not found: ${fixturePath}. Run "npm run test:fixtures" first.`)
+  }
+
+  return readFileSync(fixturePath, 'utf-8')
 }
 
 test('parseSCL parses a valid SSD and extracts expected normalized data', () => {
@@ -29,4 +36,9 @@ test('parseSCL throws a clear error when XML has no SCL root element', () => {
     () => parseSCL('<Root/>'),
     /Fichier SCL invalide : élément racine <SCL> introuvable/
   )
+})
+
+test('fixtures are generated in the temporary fixture directory', () => {
+  const fixturePath = getFixturePath('spec.ssd')
+  assert.equal(fixturePath.startsWith(getFixturesDir()), true)
 })

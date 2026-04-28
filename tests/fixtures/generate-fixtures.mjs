@@ -1,9 +1,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import os from 'node:os'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+// All generated fixtures are stored in a temporary workspace directory.
+// This keeps generated XML files out of the Git repository.
+const outputDir = process.env.IEC61850_FIXTURES_DIR
+  ? path.resolve(process.env.IEC61850_FIXTURES_DIR)
+  : path.join(os.tmpdir(), 'iec61850toolbox-test-fixtures')
 
 /**
  * Test fixture catalog used by unit and non-regression tests.
@@ -132,10 +135,12 @@ const fixtures = {
 `,
 }
 
+await fs.mkdir(outputDir, { recursive: true })
+
 await Promise.all(
   Object.entries(fixtures).map(([fileName, content]) =>
-    fs.writeFile(path.join(__dirname, fileName), content, 'utf-8')
+    fs.writeFile(path.join(outputDir, fileName), content, 'utf-8')
   )
 )
 
-console.log(`Generated ${Object.keys(fixtures).length} SSD/ICD fixtures in ${__dirname}`)
+console.log(`Generated ${Object.keys(fixtures).length} SSD/ICD fixtures in ${outputDir}`)

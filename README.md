@@ -39,4 +39,6 @@ Then open the local URL displayed by Vite in your browser.
 5. Run `npm run test:watch` during development for automatic re-run.
 6. Optional: run `npm run test:fixtures` after changing test scenarios.
 
+Generated fixture XML files are written to your OS temporary directory (`iec61850toolbox-test-fixtures`) and are not tracked in Git.
+
 You can also use VS Code NPM Scripts view (Explorer > NPM Scripts) to launch `test`, `test:watch`, and `test:fixtures` without typing commands.

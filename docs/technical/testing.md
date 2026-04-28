@@ -14,13 +14,14 @@ When code changes, test fixtures and assertions must be updated in the same pull
 
 - Runtime: native Node.js test runner (`node:test`)
 - Assertion library: native `node:assert/strict`
-- Fixture generation: `tests/fixtures/generate-fixtures.mjs`
+- Fixture generation: `tests/fixtures/generate-fixtures.mjs` (writes files to OS temporary directory).
 
 ## Test structure
 
 - `tests/parseSCL.test.js`: parser unit tests.
 - `tests/compareIED.test.js`: comparison unit + non-regression tests.
-- `tests/fixtures/`: generated SSD/ICD fixture files and generator script.
+- `tests/fixtures/`: fixture generator and fixture path helper.
+- Generated fixture files: stored in temporary directory `iec61850toolbox-test-fixtures` (not committed to Git).
 
 ## Commands
 
