@@ -1,11 +1,14 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const fixturesDir = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * Resolve the fixture directory containing versioned fixture files.
  * Fixtures are intentionally committed to the repository for deterministic tests.
  */
 export function getFixturesDir() {
-  return path.resolve('tests/fixtures')
+  return fixturesDir
 }
 
 /**
