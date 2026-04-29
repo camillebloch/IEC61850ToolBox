@@ -4,7 +4,7 @@ Feature: Parse SCL files
   So that validation and comparison can rely on a deterministic structure
 
   Scenario: Parse a valid SSD file
-    Given the generated fixture "spec.ssd"
+    Given the fixture file "TestCase1.ssd"
     When I parse the SCL XML content
     Then the parsed IED list should contain exactly 1 item
     And the first logical device instance should be "LD0"

@@ -4,14 +4,6 @@ import { Before, Given, Then, When } from '@cucumber/cucumber'
 import { parseSCL } from '../../../src/lib/parseSCL.js'
 import { compareIED } from '../../../src/lib/compareIED.js'
 import { getFixturePath } from '../../fixtures/fixturePaths.js'
-import { ensureFixturesGenerated } from '../../helpers/ensureFixtures.js'
-
-/**
- * Initialize fixture files once before executing Cucumber scenarios.
- */
-Before(() => {
-  ensureFixturesGenerated()
-})
 
 /**
  * Reset scenario state to guarantee scenario isolation.
@@ -24,11 +16,11 @@ Before(function resetScenarioContext() {
   this.comparisonResult = undefined
 })
 
-Given('the generated fixture {string}', function loadGeneratedFixture(fileName) {
+Given('the fixture file {string}', function loadFixtureFile(fileName) {
   const fixturePath = getFixturePath(fileName)
 
   if (!existsSync(fixturePath)) {
-    throw new Error(`Fixture not found: ${fixturePath}. Run "npm run test:fixtures" first.`)
+    throw new Error(`Fixture not found: ${fixturePath}. Ensure the fixture file exists in tests/fixtures.`)
   }
 
   const payload = readFileSync(fixturePath, 'utf-8')
@@ -51,7 +43,7 @@ When('I parse the SCL XML content', function parseSclXmlContent() {
 })
 
 When('I compare the specification model with the real model', function compareSpecificationWithRealModel() {
-  assert.equal(this.fixturePayloads.length, 2, 'Two generated fixtures are required for comparison.')
+  assert.equal(this.fixturePayloads.length, 2, 'Two fixture files are required for comparison.')
 
   const specModel = parseSCL(this.fixturePayloads[0])
   const realModel = parseSCL(this.fixturePayloads[1])
