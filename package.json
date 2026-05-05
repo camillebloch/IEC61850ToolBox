@@ -10,8 +10,6 @@
     "preview": "vite preview",
     "test": "cucumber-js tests/features/**/*.feature",
     "test:watch": "cucumber-js --watch tests/features/**/*.feature",
-    "test:fixtures": "node tests/fixtures/generate-fixtures.mjs",
-    "pretest": "npm run test:fixtures",
     "test:cucumber": "npm run test",
     "test:cucumber:watch": "npm run test:watch"
   },
