@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SCL version="2007" revision="B" release="4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:schemaLocation="http://www.iec.ch/61850/2003/SCL SCL.xsd" xmlns="http://www.iec.ch/61850/2003/SCL">
+	<Header id="TestCase1" version="0" revision="1" nameStructure="IEDName"/>
+	<IED name="TEMPLATE" originalSclVersion="2007" originalSclRevision="B" originalSclRelease="4">
+		<Services>
+			<ConfDataSet modify="true" maxAttributes="256" max="580"/>
+			<ConfReportControl bufMode="both" max="512"/>
+			<ConfLogControl max="64"/>
+			<GOOSE max="64"/>
+			<SMVsc max="64"/>
+			<ConfLNs fixPrefix="false" fixLnInst="false"/>
+			<ConfLdName/>
+		</Services>
+		<AccessPoint name="AP1">
+			<Server>
+				<Authentication/>
+				<LDevice inst="LD0">
+					<LN0 lnClass="LLN0" inst="" lnType="SE_LLN0_SET_default_V001"/>
+					<LN prefix="" lnClass="GGIO" inst="1" lnType="SE_GGIO_SET_default_V001"/>
+				</LDevice>
+			</Server>
+		</AccessPoint>
+	</IED>
+	<DataTypeTemplates>
+		<LNodeType iedType="SE_Spec_SET" lnClass="GGIO" id="SE_GGIO_SET_default_V001" desc="Generic process I/O">
+			<DO name="Beh" type="SE_ENS_V001" desc="Behaviour"/>
+			<DO name="NamPlt" type="SE_LPL_V001" desc="Name plate"/>
+		</LNodeType>
+		<LNodeType iedType="SE_Spec_SET" lnClass="LLN0" id="SE_LLN0_SET_default_V001" desc="Logical device LN">
+			<DO name="Beh" type="SE_ENS_V001" desc="Behaviour"/>
+			<DO name="NamPlt" type="SE_LPL_V001" desc="Name plate"/>
+		</LNodeType>
+		<DOType cdc="ENS" id="SE_ENS_V001">
+			<DA dchg="true" dupd="true" fc="ST" name="stVal" bType="Enum" type="SE_stVal_V001" desc="state value"/>
+			<DA qchg="true" fc="ST" name="q" bType="Quality" desc="quality"/>
+			<DA fc="ST" name="t" bType="Timestamp" desc="time"/>
+		</DOType>
+		<DOType cdc="LPL" id="SE_LPL_V001">
+			<DA fc="EX" name="lnNs" bType="VisString255" desc="logical node name space">
+				<Val>IEC 61850-7-4:2007B</Val>
+			</DA>
+		</DOType>
+		<EnumType id="SE_stVal_V001">
+			<EnumVal ord="1">on</EnumVal>
+			<EnumVal ord="2">blocked</EnumVal>
+			<EnumVal ord="3">test</EnumVal>
+			<EnumVal ord="4">test/blocked</EnumVal>
+			<EnumVal ord="5">off</EnumVal>
+		</EnumType>
+	</DataTypeTemplates>
+</SCL>
