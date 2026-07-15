@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { parseSCL } from './lib/parseSCL'
 import { compareIED } from './lib/compareIED'
+import { searchDataInstancesByTypeId } from './lib/searchDataInstances'
 import FileUploadPanel from './components/FileUploadPanel'
 import ComparisonReport from './components/ComparisonReport'
 
@@ -134,10 +135,42 @@ function SearchDataInstancesPanel() {
   const sclInputRef = useRef()
   const [sclFile, setSclFile] = useState(null)
   const [dataTypeId, setDataTypeId] = useState('')
+  const [sclData, setSclData] = useState(null)
+  const [searchResult, setSearchResult] = useState(null)
 
   const handleSclFileChange = (event) => {
     const file = event.target.files[0]
-    if (file) setSclFile(file)
+    if (!file) return
+
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      try {
+        const parsed = parseSCL(reader.result)
+        setSclFile(file)
+        setSclData(parsed)
+        setSearchResult({ status: 'ready', message: 'SCL file loaded. Enter a data type ID and launch the search.' })
+      } catch (e) {
+        setSclFile(null)
+        setSclData(null)
+        setSearchResult({ status: 'error', message: 'Error while parsing the SCL file: ' + e.message })
+      }
+    }
+
+    reader.onerror = () => {
+      setSearchResult({ status: 'error', message: 'Error while reading the SCL file.' })
+    }
+
+    reader.readAsText(file)
+  }
+
+  const handleSearch = () => {
+    if (!sclData) {
+      setSearchResult({ status: 'error', message: 'Select a valid SCL file before launching the search.' })
+      return
+    }
+
+    setSearchResult(searchDataInstancesByTypeId(sclData, dataTypeId))
   }
 
   return (
@@ -192,6 +225,79 @@ function SearchDataInstancesPanel() {
           </span>
         </label>
       </div>
+
+      {/* Search action and result pane for resolved data instances. */}
+      <div className="mt-5 flex flex-col gap-4">
+        <button
+          type="button"
+          className="w-full sm:w-fit border border-cyan-500 bg-cyan-500 px-5 py-2 text-sm font-bold uppercase tracking-widest text-slate-950 transition-colors hover:bg-cyan-300 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
+          onClick={handleSearch}
+          disabled={!sclData}
+        >
+          Launch search
+        </button>
+
+        <SearchResultPane result={searchResult} />
+      </div>
     </section>
   )
+}
+
+
+function SearchResultPane({ result }) {
+  if (!result) {
+    return (
+      <div className="min-h-32 border border-slate-700 bg-slate-950/60 p-4 text-sm text-slate-500">
+        Search results will appear here after launching the search.
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-32 border border-slate-700 bg-slate-950/60 p-4 text-sm text-slate-300">
+      <p className="mb-4 font-bold text-cyan-300">{result.message}</p>
+      {result.matches?.length > 0 && (
+        <div className="space-y-4">
+          {result.matches.map((match) => (
+            <div key={`${match.ied.name}-${match.logicalDevice.inst}-${formatLogicalNodeName(match.logicalNode)}`} className="border border-slate-800 bg-slate-900/70 p-3">
+              <p className="text-xs uppercase tracking-widest text-slate-500">Logical node</p>
+              <p className="font-bold text-slate-100">
+                {match.ied.name} / {match.logicalDevice.inst} / {formatLogicalNodeName(match.logicalNode)}
+              </p>
+
+              <ul className="mt-3 space-y-2">
+                {match.instanceMatches.map(({ path, instance }) => (
+                  <li key={`${path.doName}-${path.daPath.join('.') || 'doi'}`} className="border-l-2 border-cyan-900 pl-3">
+                    <p className="text-xs text-slate-500">Template path: {formatTemplatePath(path)}</p>
+                    {instance ? (
+                      <pre className="mt-1 whitespace-pre-wrap break-words bg-slate-950 p-3 text-xs text-slate-200">{formatInstance(instance)}</pre>
+                    ) : (
+                      <p className="mt-1 text-amber-300">LN found, but no DOI/DAI was found for this template path.</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatLogicalNodeName(logicalNode) {
+  return `${logicalNode.prefix}${logicalNode.lnClass}${logicalNode.inst || ''}`
+}
+
+function formatTemplatePath(path) {
+  return `${path.lnTypeId} / ${path.doName}${path.daPath.length > 0 ? `.${path.daPath.join('.')}` : ''}`
+}
+
+function formatInstance(instance, depth = 0) {
+  const indent = '  '.repeat(depth)
+  const value = instance.value == null ? '' : ` = ${instance.value}`
+  const current = `${indent}${instance.kind} ${instance.name}${value}`
+  const children = instance.children.map((child) => formatInstance(child, depth + 1))
+
+  return [current, ...children].join('\n')
 }
