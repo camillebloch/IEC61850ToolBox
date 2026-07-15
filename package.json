@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "test": "cucumber-js tests/features/**/*.feature",
     "test:watch": "cucumber-js --watch tests/features/**/*.feature",
-    "test:cucumber": "npm run test",
-    "test:cucumber:watch": "npm run test:watch"
+    "test:bdd": "npm run test",
+    "test:bdd:watch": "npm run test:watch"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
