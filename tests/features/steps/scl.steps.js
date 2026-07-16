@@ -108,6 +108,34 @@ Then('the search should return DOI indexes {string}', function verifySearchDoiIn
   assert.equal(actualIndexes, expectedIndexes)
 })
 
+Then('the search status should be {string}', function verifySearchStatus(expectedStatus) {
+  assert.ok(this.searchResult, 'Expected a data instance search result but no result was produced.')
+  assert.equal(this.searchResult.status, expectedStatus)
+})
+
+Then('the search should include template paths {string}', function verifySearchTemplatePaths(expectedPaths) {
+  assert.ok(this.searchResult, 'Expected a data instance search result but no result was produced.')
+
+  // Compare formatted template paths so feature files describe the same paths shown by the UI.
+  const actualPaths = (this.searchResult.typePaths ?? [])
+    .map((path) => `${path.lnTypeId} / ${path.doName}${path.daPath.length > 0 ? `.${path.daPath.join('.')}` : ''}`)
+    .join(', ')
+
+  assert.equal(actualPaths, expectedPaths)
+})
+
+Then('the search should return instance values {string}', function verifySearchInstanceValues(expectedValues) {
+  assert.ok(this.searchResult, 'Expected a data instance search result but no result was produced.')
+
+  // Flatten all matched instances before reading values because one search can span several logical nodes.
+  const actualValues = this.searchResult.matches
+    .flatMap((match) => match.instanceMatches)
+    .flatMap((instanceMatch) => instanceMatch.instance?.values ?? [])
+    .join(', ')
+
+  assert.equal(actualValues, expectedValues)
+})
+
 Then('enum type {string} should contain values {string}', function verifyEnumTypeValues(enumTypeId, expectedValues) {
   assert.ok(this.parsedResult, 'Expected a parsed model but no result was produced.')
 
