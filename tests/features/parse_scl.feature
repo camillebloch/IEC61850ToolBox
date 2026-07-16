@@ -50,3 +50,18 @@ Feature: Parse SCL files
       """
     When I search data instances for type ID "BehType"
     Then the search should return DOI indexes "1, 2"
+
+  Scenario: Parse enum value labels from EnumVal text
+    Given the XML payload
+      """
+      <SCL>
+        <DataTypeTemplates>
+          <EnumType id="BehaviorKind">
+            <EnumVal ord="1">on</EnumVal>
+            <EnumVal ord="2">blocked</EnumVal>
+          </EnumType>
+        </DataTypeTemplates>
+      </SCL>
+      """
+    When I parse the SCL XML content
+    Then enum type "BehaviorKind" should contain values "on, blocked"

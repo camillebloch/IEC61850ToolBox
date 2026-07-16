@@ -107,3 +107,13 @@ Then('the search should return DOI indexes {string}', function verifySearchDoiIn
 
   assert.equal(actualIndexes, expectedIndexes)
 })
+
+Then('enum type {string} should contain values {string}', function verifyEnumTypeValues(enumTypeId, expectedValues) {
+  assert.ok(this.parsedResult, 'Expected a parsed model but no result was produced.')
+
+  const enumType = this.parsedResult.typeTemplates.enumTypes.get(enumTypeId)
+  assert.ok(enumType, `Expected enum type ${enumTypeId} to be present in parsed templates.`)
+
+  const actualValues = enumType.values.map((enumValue) => enumValue.value).join(', ')
+  assert.equal(actualValues, expectedValues)
+})

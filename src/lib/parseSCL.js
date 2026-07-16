@@ -100,7 +100,7 @@ function parseDataTypeTemplates(scl) {
     enumTypes.set(enumType['@_id'], {
       values: (enumType.EnumVal ?? []).map((enumValue) => ({
         ord: enumValue['@_ord'] ?? null,
-        value: getTextValue(enumValue),
+        value: getNodeTextValue(enumValue),
       })),
     })
   }
@@ -220,8 +220,12 @@ function parseStructuredDataInstances(instances = [], kind) {
   })
 }
 
-function getTextValue(node) {
-  return getTextValues(node)[0] ?? null
+function getNodeTextValue(node) {
+  if (typeof node === 'object' && node !== null && node['#text'] != null) {
+    return String(node['#text'])
+  }
+
+  return node == null ? null : String(node)
 }
 
 function getTextValues(node) {
