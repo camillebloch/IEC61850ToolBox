@@ -3,9 +3,9 @@ import { XMLParser } from 'fast-xml-parser'
 const parserOptions = {
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
-  removeNSPrefix: true, // 👈 supprime les préfixes de namespace
+  removeNSPrefix: true, // Remove namespace prefixes so SCL files from different vendors share the same element names.
   isArray: (name) => [
-    'IED', 'LDevice', 'LN', 'LN0', 'DO', 'DA', 'SDO', 'BDA',
+    'IED', 'LDevice', 'LN', 'LN0', 'DO', 'DA', 'SDO', 'BDA', 'DOI', 'SDI', 'DAI', 'Val',
     'DataSet', 'FCDA', 'ReportControl', 'GSEControl',
     'AccessPoint', 'Server', 'LNodeType', 'DOType', 'DAType',
     'EnumType', 'EnumVal', 'Private',
@@ -18,15 +18,15 @@ export function parseSCL(xmlString) {
   const raw = parser.parse(xmlString)
   const scl = raw?.SCL
 
-  if (!scl) throw new Error('Fichier SCL invalide : élément racine <SCL> introuvable')
+  if (!scl) throw new Error('Invalid SCL file: missing <SCL> root element')
 
-  // Construire le dictionnaire des DataTypeTemplates
+  // Build the DataTypeTemplates dictionary once for fast type resolution.
   const typeTemplates = parseDataTypeTemplates(scl)
 
   return {
     header: parseHeader(scl),
     ieds: parseIEDs(scl, typeTemplates),
-    typeTemplates, // utile pour debug
+    typeTemplates, // Exposed for data type search and diagnostics.
   }
 }
 
@@ -42,13 +42,13 @@ function parseHeader(scl) {
 }
 
 // ---------------------------------------------------------------------------
-// DataTypeTemplates — construit des Maps pour résolution rapide
+// DataTypeTemplates — builds maps for fast resolution
 // ---------------------------------------------------------------------------
 function parseDataTypeTemplates(scl) {
   const dtt = scl.DataTypeTemplates
-  if (!dtt) return { lNodeTypes: new Map(), doTypes: new Map(), daTypes: new Map() }
+  if (!dtt) return { lNodeTypes: new Map(), doTypes: new Map(), daTypes: new Map(), enumTypes: new Map() }
 
-  // LNodeType : lnType id → { lnClass, dos: [{name, type, desc}] }
+  // LNodeType: lnType id → { lnClass, dos: [{name, type, desc}] }
   const lNodeTypes = new Map()
   for (const lnt of dtt.LNodeType ?? []) {
     lNodeTypes.set(lnt['@_id'], {
@@ -63,7 +63,7 @@ function parseDataTypeTemplates(scl) {
     })
   }
 
-  // DOType : doType id → { cdc, das: [{name, bType, fc, desc}] }
+  // DOType: doType id → { cdc, das: [{name, bType, fc, desc}] }
   const doTypes = new Map()
   for (const dot of dtt.DOType ?? []) {
     doTypes.set(dot['@_id'], {
@@ -74,6 +74,7 @@ function parseDataTypeTemplates(scl) {
         bType: da['@_bType'] ?? null,
         fc: da['@_fc'] ?? null,
         desc: da['@_desc'] ?? null,
+        type: da['@_type'] ?? null,
       })),
       sdos: (dot.SDO ?? []).map((sdo) => ({
         name: sdo['@_name'],
@@ -82,18 +83,29 @@ function parseDataTypeTemplates(scl) {
     })
   }
 
-  // DAType : daType id → { bdas: [{name, bType, desc}] }
+  // DAType: daType id → { bdas: [{name, bType, desc}] }
   const daTypes = new Map()
   for (const dat of dtt.DAType ?? []) {
     daTypes.set(dat['@_id'], {
       bdas: (dat.BDA ?? []).map((bda) => ({
         name: bda['@_name'],
         bType: bda['@_bType'] ?? null,
+        type: bda['@_type'] ?? null,
       })),
     })
   }
 
-  return { lNodeTypes, doTypes, daTypes }
+  const enumTypes = new Map()
+  for (const enumType of dtt.EnumType ?? []) {
+    enumTypes.set(enumType['@_id'], {
+      values: (enumType.EnumVal ?? []).map((enumValue) => ({
+        ord: enumValue['@_ord'] ?? null,
+        value: getTextValue(enumValue),
+      })),
+    })
+  }
+
+  return { lNodeTypes, doTypes, daTypes, enumTypes }
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +146,7 @@ function parseLogicalDevices(ied, typeTemplates) {
 }
 
 // ---------------------------------------------------------------------------
-// Logical Nodes — résolution via DataTypeTemplates
+// Logical Nodes — resolution through DataTypeTemplates
 // ---------------------------------------------------------------------------
 function parseLogicalNodes(ld, { lNodeTypes, doTypes }) {
   const lns = [...(ld.LN0 ?? []), ...(ld.LN ?? [])]
@@ -142,7 +154,7 @@ function parseLogicalNodes(ld, { lNodeTypes, doTypes }) {
     const lnTypeId = ln['@_lnType']
     const lnTypeDef = lNodeTypes.get(lnTypeId)
 
-    // Résolution des DO depuis DataTypeTemplates
+    // Resolve data objects from DataTypeTemplates.
     const dataObjects = (lnTypeDef?.dos ?? []).map((doRef) => {
       const doTypeDef = doTypes.get(doRef.type)
       return {
@@ -161,12 +173,64 @@ function parseLogicalNodes(ld, { lNodeTypes, doTypes }) {
       lnType: lnTypeId ?? null,
       desc: ln['@_desc'] ?? null,
       dataObjects,
+      dataInstances: parseDataInstances(ln.DOI),
     }
   })
 }
 
+
 // ---------------------------------------------------------------------------
-// Datasets, RCBs, GSEControls (définis dans LN0)
+// Instance data — keeps DOI/SDI/DAI values for data type searches
+// ---------------------------------------------------------------------------
+function parseDataInstances(instances = []) {
+  return instances.map((instance) => {
+    const values = getTextValues(instance)
+
+    return {
+      kind: 'DOI',
+      name: instance['@_name'],
+      ix: instance['@_ix'] ?? null,
+      desc: instance['@_desc'] ?? null,
+      value: values.length > 0 ? values.join(', ') : null,
+      values,
+      children: [
+        ...parseStructuredDataInstances(instance.SDI, 'SDI'),
+        ...parseStructuredDataInstances(instance.DAI, 'DAI'),
+      ],
+    }
+  })
+}
+
+function parseStructuredDataInstances(instances = [], kind) {
+  return instances.map((instance) => {
+    const values = getTextValues(instance)
+
+    return {
+      kind,
+      name: instance['@_name'],
+      ix: instance['@_ix'] ?? null,
+      desc: instance['@_desc'] ?? null,
+      value: values.length > 0 ? values.join(', ') : null,
+      values,
+      children: [
+        ...parseStructuredDataInstances(instance.SDI, 'SDI'),
+        ...parseStructuredDataInstances(instance.DAI, 'DAI'),
+      ],
+    }
+  })
+}
+
+function getTextValue(node) {
+  return getTextValues(node)[0] ?? null
+}
+
+function getTextValues(node) {
+  const valueNodes = Array.isArray(node?.Val) ? node.Val : node?.Val == null ? [] : [node.Val]
+  return valueNodes.map((valueNode) => (typeof valueNode === 'object' ? (valueNode['#text'] ?? '') : String(valueNode)))
+}
+
+// ---------------------------------------------------------------------------
+// Datasets, RCBs, GSEControls (defined in LN0)
 // ---------------------------------------------------------------------------
 function parseDatasets(ld) {
   const ln0 = ld.LN0?.[0]
