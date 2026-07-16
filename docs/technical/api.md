@@ -45,7 +45,7 @@ It returns a status, a user-facing message, resolved template paths, and matchin
 ### Search statuses
 
 - `empty`: no data type ID was provided.
-- `not-found`: the requested ID is not present in the parsed templates.
+- `not-found`: no template path can be resolved for the requested ID from any parsed `LNodeType` graph. The ID may still be declared in `DataTypeTemplates` (for example as an unreferenced `DOType`, `DAType`, or `EnumType`), so this status does not by itself prove the template ID is absent or misspelled.
 - `no-ln`: the ID exists in templates, but no LN or LN0 implements a resolved `LNodeType`.
 - `found`: at least one logical node uses the resolved template path.
 
