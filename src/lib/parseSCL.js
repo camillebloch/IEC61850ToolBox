@@ -183,35 +183,50 @@ function parseLogicalNodes(ld, { lNodeTypes, doTypes }) {
 // Instance data — keeps DOI/SDI/DAI values for data type searches
 // ---------------------------------------------------------------------------
 function parseDataInstances(instances = []) {
-  return instances.map((instance) => ({
-    kind: 'DOI',
-    name: instance['@_name'],
-    desc: instance['@_desc'] ?? null,
-    value: getTextValue(instance),
-    children: [
-      ...parseStructuredDataInstances(instance.SDI, 'SDI'),
-      ...parseStructuredDataInstances(instance.DAI, 'DAI'),
-    ],
-  }))
+  return instances.map((instance) => {
+    const values = getTextValues(instance)
+
+    return {
+      kind: 'DOI',
+      name: instance['@_name'],
+      ix: instance['@_ix'] ?? null,
+      desc: instance['@_desc'] ?? null,
+      value: values.length > 0 ? values.join(', ') : null,
+      values,
+      children: [
+        ...parseStructuredDataInstances(instance.SDI, 'SDI'),
+        ...parseStructuredDataInstances(instance.DAI, 'DAI'),
+      ],
+    }
+  })
 }
 
 function parseStructuredDataInstances(instances = [], kind) {
-  return instances.map((instance) => ({
-    kind,
-    name: instance['@_name'],
-    desc: instance['@_desc'] ?? null,
-    value: getTextValue(instance),
-    children: [
-      ...parseStructuredDataInstances(instance.SDI, 'SDI'),
-      ...parseStructuredDataInstances(instance.DAI, 'DAI'),
-    ],
-  }))
+  return instances.map((instance) => {
+    const values = getTextValues(instance)
+
+    return {
+      kind,
+      name: instance['@_name'],
+      ix: instance['@_ix'] ?? null,
+      desc: instance['@_desc'] ?? null,
+      value: values.length > 0 ? values.join(', ') : null,
+      values,
+      children: [
+        ...parseStructuredDataInstances(instance.SDI, 'SDI'),
+        ...parseStructuredDataInstances(instance.DAI, 'DAI'),
+      ],
+    }
+  })
 }
 
 function getTextValue(node) {
-  const valueNode = Array.isArray(node?.Val) ? node.Val[0] : node?.Val
-  if (valueNode == null) return null
-  return typeof valueNode === 'object' ? (valueNode['#text'] ?? '') : String(valueNode)
+  return getTextValues(node)[0] ?? null
+}
+
+function getTextValues(node) {
+  const valueNodes = Array.isArray(node?.Val) ? node.Val : node?.Val == null ? [] : [node.Val]
+  return valueNodes.map((valueNode) => (typeof valueNode === 'object' ? (valueNode['#text'] ?? '') : String(valueNode)))
 }
 
 // ---------------------------------------------------------------------------

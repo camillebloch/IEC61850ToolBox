@@ -28,10 +28,12 @@ export function searchDataInstancesByTypeId(sclModel, dataTypeId) {
         const pathsForNode = typePaths.filter((path) => path.lnTypeId === logicalNode.lnType)
         if (pathsForNode.length === 0) continue
 
-        const instanceMatches = pathsForNode.map((path) => ({
-          path,
-          instance: findInstanceForPath(logicalNode.dataInstances, path),
-        }))
+        const instanceMatches = pathsForNode.flatMap((path) => {
+          const instances = findInstancesForPath(logicalNode.dataInstances, path)
+          return instances.length > 0
+            ? instances.map((instance) => ({ path, instance }))
+            : [{ path, instance: null }]
+        })
 
         matches.push({ ied, logicalDevice, logicalNode, instanceMatches })
       }
@@ -139,23 +141,23 @@ function collectDaTypePaths(typeTemplates, daTypeId, dataTypeId, basePath, paths
 }
 
 /**
- * Find the DOI/DAI/SDI instance matching a resolved template path.
+ * Find every DOI/DAI/SDI instance matching a resolved template path.
  */
-function findInstanceForPath(dataInstances, path) {
-  const doi = dataInstances.find((instance) => instance.name === path.doName)
-  if (!doi || path.daPath.length === 0) return doi ?? null
+function findInstancesForPath(dataInstances, path) {
+  const dois = dataInstances.filter((instance) => instance.name === path.doName)
+  if (path.daPath.length === 0) return dois
 
-  return findNestedInstance(doi.children, path.daPath)
+  return dois.flatMap((doi) => findNestedInstances(doi.children, path.daPath))
 }
 
-function findNestedInstance(children, remainingPath) {
-  if (remainingPath.length === 0) return null
+function findNestedInstances(children, remainingPath) {
+  if (remainingPath.length === 0) return []
 
   const [currentName, ...nextPath] = remainingPath
-  const child = children.find((candidate) => candidate.name === currentName)
-  if (!child) return null
+  const matchingChildren = children.filter((candidate) => candidate.name === currentName)
+  if (nextPath.length === 0) return matchingChildren
 
-  return nextPath.length === 0 ? child : findNestedInstance(child.children, nextPath)
+  return matchingChildren.flatMap((child) => findNestedInstances(child.children, nextPath))
 }
 
 function deduplicatePaths(paths) {

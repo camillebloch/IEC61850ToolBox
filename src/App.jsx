@@ -266,8 +266,8 @@ function SearchResultPane({ result }) {
               </p>
 
               <ul className="mt-3 space-y-2">
-                {match.instanceMatches.map(({ path, instance }) => (
-                  <li key={`${path.doName}-${path.daPath.join('.') || 'doi'}`} className="border-l-2 border-cyan-900 pl-3">
+                {match.instanceMatches.map(({ path, instance }, index) => (
+                  <li key={`${path.doName}-${path.daPath.join('.') || 'doi'}-${instance?.ix ?? 'no-ix'}-${index}`} className="border-l-2 border-cyan-900 pl-3">
                     <p className="text-xs text-slate-500">Template path: {formatTemplatePath(path)}</p>
                     {instance ? (
                       <pre className="mt-1 whitespace-pre-wrap break-words bg-slate-950 p-3 text-xs text-slate-200">{formatInstance(instance)}</pre>
@@ -295,8 +295,9 @@ function formatTemplatePath(path) {
 
 function formatInstance(instance, depth = 0) {
   const indent = '  '.repeat(depth)
-  const value = instance.value == null ? '' : ` = ${instance.value}`
-  const current = `${indent}${instance.kind} ${instance.name}${value}`
+  const index = instance.ix == null ? '' : `[${instance.ix}]`
+  const value = instance.values?.length > 0 ? ` = ${instance.values.join(', ')}` : ''
+  const current = `${indent}${instance.kind} ${instance.name}${index}${value}`
   const children = instance.children.map((child) => formatInstance(child, depth + 1))
 
   return [current, ...children].join('\n')
