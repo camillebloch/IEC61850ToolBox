@@ -16,7 +16,7 @@ export default function FileUploadPanel({ ssdData, icdData, onSSDLoad, onICDLoad
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* SSD */}
+      {/* SSD file input. */}
       <FileZone
         label="SSD"
         sublabel="System Specification Description"
@@ -28,7 +28,7 @@ export default function FileUploadPanel({ ssdData, icdData, onSSDLoad, onICDLoad
         onClick={() => ssdRef.current.click()}
       />
 
-      {/* ICD */}
+      {/* ICD file input. */}
       <FileZone
         label="ICD"
         sublabel="IED Capability Description"
@@ -40,17 +40,17 @@ export default function FileUploadPanel({ ssdData, icdData, onSSDLoad, onICDLoad
         onClick={() => icdRef.current.click()}
       />
 
-      {/* Sélection IED + Lancer */}
+      {/* IED selection and compatibility check trigger. */}
       <div className="border border-slate-700 bg-slate-900 p-4 flex flex-col justify-between gap-4">
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">IED à vérifier</p>
+          <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">IED to check</p>
           <select
             className="w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2 focus:outline-none focus:border-cyan-500"
             value={selectedIED}
             onChange={(e) => setSelectedIED(e.target.value)}
             disabled={ieds.length === 0}
           >
-            <option value="">— Sélectionner —</option>
+            <option value="">— Select —</option>
             {ieds.map((ied) => (
               <option key={ied.name} value={ied.name}>{ied.name}</option>
             ))}
@@ -65,7 +65,7 @@ export default function FileUploadPanel({ ssdData, icdData, onSSDLoad, onICDLoad
           onClick={() => canCompare && onCompare(selectedIED)}
           disabled={!canCompare}
         >
-          Lancer la vérification
+          Run check
         </button>
       </div>
     </div>
@@ -85,12 +85,12 @@ function FileZone({ label, sublabel, accept, loaded, info, inputRef, onChange, o
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={onChange} />
       <div className="flex items-start justify-between mb-2">
         <span className="text-xs text-slate-500 uppercase tracking-widest">{sublabel}</span>
-        {loaded && <span className="text-xs text-cyan-400">✓ chargé</span>}
+        {loaded && <span className="text-xs text-cyan-400">✓ loaded</span>}
       </div>
       <p className="text-2xl font-bold text-slate-200">{label}</p>
       {info
         ? <p className="text-xs text-cyan-400 mt-1">{info}</p>
-        : <p className="text-xs text-slate-600 mt-1">Cliquer pour charger</p>
+        : <p className="text-xs text-slate-600 mt-1">Click to load</p>
       }
     </div>
   )

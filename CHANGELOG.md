@@ -13,5 +13,7 @@ The changelog is intentionally high-level:
 
 ### Added
 
+- Added executable data instance search that resolves `LNodeType`, `DOType`, `DAType`, and `EnumType` IDs to matching DOI, SDI, and DAI values in SCL files.
+- Added SCL source file selection and data type identifier input controls to the Search data instances panel.
 - Initial documentation set under `docs/` for user and technical guidance.
 - Initial changelog process to track major product evolutions.

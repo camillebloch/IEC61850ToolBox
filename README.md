@@ -31,6 +31,7 @@ Then open the local URL displayed by Vite in your browser.
 - Production build: `npm run build`
 - Run Cucumber tests: `npm run test`
 - Watch Cucumber tests: `npm run test:watch`
-- Regenerate XML fixtures: `npm run test:fixtures`
+- Run Cucumber tests: `npm run test:bdd`
+- Watch Cucumber tests: `npm run test:bdd:watch`
 
-Generated fixture XML files are written to your OS temporary directory (`iec61850toolbox-test-fixtures`) and are not tracked in Git.
+Fixture XML files are committed under `tests/fixtures/` so test runs are deterministic across environments.

@@ -13,3 +13,18 @@ Feature: Parse SCL files
     Given the XML payload "<Root/>"
     When I parse the SCL XML content
     Then a parse error should mention the missing "SCL" root element
+
+  Scenario: Parse enum value labels from EnumVal text
+    Given the XML payload
+      """
+      <SCL>
+        <DataTypeTemplates>
+          <EnumType id="BehaviorKind">
+            <EnumVal ord="1">on</EnumVal>
+            <EnumVal ord="2">blocked</EnumVal>
+          </EnumType>
+        </DataTypeTemplates>
+      </SCL>
+      """
+    When I parse the SCL XML content
+    Then enum type "BehaviorKind" should contain values "on, blocked"

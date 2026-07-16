@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { Before, Given, Then, When } from '@cucumber/cucumber'
 import { parseSCL } from '../../../src/lib/parseSCL.js'
 import { compareIED } from '../../../src/lib/compareIED.js'
+import { searchDataInstancesByTypeId } from '../../../src/lib/searchDataInstances.js'
 import { getFixturePath } from '../../fixtures/fixturePaths.js'
 
 /**
@@ -14,6 +15,7 @@ Before(function resetScenarioContext() {
   this.parsedResult = undefined
   this.parseError = undefined
   this.comparisonResult = undefined
+  this.searchResult = undefined
 })
 
 Given('the fixture file {string}', function loadFixtureFile(fileName) {
@@ -32,6 +34,10 @@ Given('the XML payload {string}', function setInlineXmlPayload(xmlPayload) {
   this.xmlPayload = xmlPayload
 })
 
+Given('the XML payload', function setInlineXmlDocString(xmlPayload) {
+  this.xmlPayload = xmlPayload
+})
+
 When('I parse the SCL XML content', function parseSclXmlContent() {
   this.parseError = undefined
 
@@ -40,6 +46,13 @@ When('I parse the SCL XML content', function parseSclXmlContent() {
   } catch (error) {
     this.parseError = error
   }
+})
+
+When('I search data instances for type ID {string}', function searchDataInstances(typeId) {
+  assert.ok(this.xmlPayload, 'An XML payload is required before searching data instances.')
+
+  const parsedModel = parseSCL(this.xmlPayload)
+  this.searchResult = searchDataInstancesByTypeId(parsedModel, typeId)
 })
 
 When('I compare the specification model with the real model', function compareSpecificationWithRealModel() {
@@ -81,4 +94,54 @@ Then('the MMXU logical node should be marked as {string}', function verifyMmxuSt
   const mmxu = this.comparisonResult.logicalDevices[0].logicalNodes.find((logicalNode) => logicalNode.lnClass === 'MMXU')
   assert.ok(mmxu, 'Expected MMXU logical node to be present in comparison output.')
   assert.equal(mmxu.status, expectedStatus)
+})
+
+Then('the search should return DOI indexes {string}', function verifySearchDoiIndexes(expectedIndexes) {
+  assert.ok(this.searchResult, 'Expected a data instance search result but no result was produced.')
+
+  const actualIndexes = this.searchResult.matches
+    .flatMap((match) => match.instanceMatches)
+    .map((instanceMatch) => instanceMatch.instance?.ix)
+    .filter((ix) => ix != null)
+    .join(', ')
+
+  assert.equal(actualIndexes, expectedIndexes)
+})
+
+Then('the search status should be {string}', function verifySearchStatus(expectedStatus) {
+  assert.ok(this.searchResult, 'Expected a data instance search result but no result was produced.')
+  assert.equal(this.searchResult.status, expectedStatus)
+})
+
+Then('the search should include template paths {string}', function verifySearchTemplatePaths(expectedPaths) {
+  assert.ok(this.searchResult, 'Expected a data instance search result but no result was produced.')
+
+  // Compare formatted template paths so feature files describe the same paths shown by the UI.
+  const actualPaths = (this.searchResult.typePaths ?? [])
+    .map((path) => `${path.lnTypeId} / ${path.doName}${path.daPath.length > 0 ? `.${path.daPath.join('.')}` : ''}`)
+    .join(', ')
+
+  assert.equal(actualPaths, expectedPaths)
+})
+
+Then('the search should return instance values {string}', function verifySearchInstanceValues(expectedValues) {
+  assert.ok(this.searchResult, 'Expected a data instance search result but no result was produced.')
+
+  // Flatten all matched instances before reading values because one search can span several logical nodes.
+  const actualValues = this.searchResult.matches
+    .flatMap((match) => match.instanceMatches)
+    .flatMap((instanceMatch) => instanceMatch.instance?.values ?? [])
+    .join(', ')
+
+  assert.equal(actualValues, expectedValues)
+})
+
+Then('enum type {string} should contain values {string}', function verifyEnumTypeValues(enumTypeId, expectedValues) {
+  assert.ok(this.parsedResult, 'Expected a parsed model but no result was produced.')
+
+  const enumType = this.parsedResult.typeTemplates.enumTypes.get(enumTypeId)
+  assert.ok(enumType, `Expected enum type ${enumTypeId} to be present in parsed templates.`)
+
+  const actualValues = enumType.values.map((enumValue) => enumValue.value).join(', ')
+  assert.equal(actualValues, expectedValues)
 })

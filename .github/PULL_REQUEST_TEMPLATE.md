@@ -12,12 +12,5 @@
 
 ### Executed checks
 
-<!-- List commands and outcomes, for example:
-- npm run lint ✅
-- npm run build ✅
--->
-
-## Pull Request process
-
-- [ ] This Pull Request is created as **Draft** by default
-- [ ] The source branch must be deleted after merge
+- [ ] npm run lint ✅
+- [ ] npm run build ✅

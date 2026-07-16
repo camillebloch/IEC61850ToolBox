@@ -14,26 +14,26 @@ When code changes, test fixtures and Cucumber assertions must be updated in the 
 
 - Runtime: Cucumber (`@cucumber/cucumber`)
 - Assertion library: native `node:assert/strict`
-- Fixture generation: `tests/fixtures/generate-fixtures.mjs` (writes files to OS temporary directory).
+- Fixtures: committed XML and XSD files under `tests/fixtures/`.
 
 ## Test structure
 
 - `tests/features/*.feature`: Gherkin scenarios.
 - `tests/features/steps/scl.steps.js`: step definitions and assertions.
-- `tests/fixtures/`: fixture generator and fixture path helper.
-- `tests/helpers/ensureFixtures.js`: fixture bootstrap used by Cucumber hooks.
-- Generated fixture files: stored in temporary directory `iec61850toolbox-test-fixtures` (not committed to Git).
+- `tests/fixtures/`: committed fixture files and the fixture path helper.
+- `tests/fixtures/fixturePaths.js`: cwd-agnostic resolution of fixture files used by Cucumber steps.
 
 ## Commands
 
-- `npm run test:fixtures`: regenerate SSD/ICD fixtures used by tests.
 - `npm run test`: run all Cucumber scenarios.
 - `npm run test:watch`: run Cucumber in watch mode during development.
+- `npm run test:bdd`: alias for the Cucumber test run.
+- `npm run test:bdd:watch`: alias for the Cucumber watch mode.
 
 ## Update process on each code change
 
 1. Update code and comments.
-2. If behavior changes, update fixture generator and regenerate fixtures.
+2. If behavior changes, update committed fixtures when the test data must change.
 3. Update Cucumber scenarios and/or step assertions.
 4. Run `npm run test` and `npm run lint`.
 5. Update technical documentation if test scope changed.
