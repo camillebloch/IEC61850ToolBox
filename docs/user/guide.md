@@ -2,21 +2,30 @@
 
 ## Goal
 
-The tool compares:
+The tool provides two browser-based IEC 61850 workflows:
 
-- an **SSD** file (system specification)
-- an **ICD** file (IED capabilities)
+- compare an **SSD** file (system specification) with an **ICD** file (IED capabilities),
+- search SCL data instances that are linked to a DataTypeTemplates identifier.
 
-It reports which elements of a target IED are compliant, partially compliant, missing, or additional.
+## IED compatibility checker workflow
 
-## Workflow
+1. Open the **IED compatibility Checker** tool.
+2. Upload one SSD file.
+3. Upload one ICD file.
+4. Select the IED to verify from the SSD content.
+5. Launch the comparison.
+6. Review the summary and detailed report.
+7. Export the report as PDF or Excel if needed.
 
-1. Upload one SSD file.
-2. Upload one ICD file.
-3. Select the IED to verify from the SSD content.
-4. Launch the comparison.
-5. Review the summary and detailed report.
-6. Export the report as PDF or Excel if needed.
+## Search data instances workflow
+
+1. Open the **Search data instances** tool.
+2. Select an SCL source file. Supported SCL-oriented extensions are ICD, IID, ISD, CID, SSD, SCD, SED, ASD, and XML.
+3. Enter a DataTypeTemplates identifier. The search accepts `LNodeType`, `DOType`, `DAType`, and `EnumType` IDs.
+4. Click **Launch search**.
+5. Review each matching IED / Logical Device / Logical Node and the resolved instance data.
+
+The search resolves the requested type ID through the template graph before looking at runtime instances. For example, a `DOType` match returns the logical nodes using an `LNodeType` that references this data object type. If matching DOI, SDI, or DAI entries are present, the result shows their values and indexes; if the logical node exists but no instance data exists for the template path, the result explicitly reports that gap.
 
 ## Status meanings
 
@@ -27,7 +36,7 @@ It reports which elements of a target IED are compliant, partially compliant, mi
 
 ## Current scope
 
-At this early stage, the tool focuses on structure comparison for:
+At this early stage, the compatibility checker focuses on structure comparison for:
 
 - Logical Devices
 - Logical Nodes
@@ -36,3 +45,5 @@ At this early stage, the tool focuses on structure comparison for:
 - Report Controls
 - GSE Controls
 - Core IED service flags
+
+The data instance search currently focuses on template-driven navigation from `DataTypeTemplates` to existing DOI, SDI, and DAI values in parsed IED logical nodes.
