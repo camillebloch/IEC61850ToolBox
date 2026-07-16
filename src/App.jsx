@@ -183,6 +183,13 @@ function SearchDataInstancesPanel() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* SCL file loading zone for data instance searches. */}
+        <input
+          ref={sclInputRef}
+          type="file"
+          accept={SCL_FILE_EXTENSIONS}
+          className="hidden"
+          onChange={handleSclFileChange}
+        />
         <button
           type="button"
           className={`border p-4 text-left transition-colors ${
@@ -190,15 +197,8 @@ function SearchDataInstancesPanel() {
               ? 'border-cyan-600 bg-cyan-950/20'
               : 'border-slate-700 bg-slate-950/40 hover:border-slate-500'
           }`}
-          onClick={() => sclInputRef.current.click()}
+          onClick={() => sclInputRef.current?.click()}
         >
-          <input
-            ref={sclInputRef}
-            type="file"
-            accept={SCL_FILE_EXTENSIONS}
-            className="hidden"
-            onChange={handleSclFileChange}
-          />
           <div className="flex items-start justify-between mb-2">
             <span className="text-xs text-slate-500 uppercase tracking-widest">SCL source file</span>
             {sclFile && <span className="text-xs text-cyan-400">✓ selected</span>}
