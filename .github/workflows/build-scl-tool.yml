@@ -1,0 +1,41 @@
+name: Build SCL PLES executable
+
+on:
+  push:
+    paths:
+      - 'scripts/update-scl-for-ples.py'
+      - '.github/workflows/build-scl-tool.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: python -m pip install lxml pyinstaller
+
+      - name: Build executable
+        run: python -m PyInstaller --onefile --name update-scl-for-ples scripts\update-scl-for-ples.py
+
+      - name: Smoke test executable
+        run: .\dist\update-scl-for-ples.exe --help
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-scl-for-ples-${{ github.sha }}
+          path: dist/update-scl-for-ples.exe
+          if-no-files-found: error
+          retention-days: 30
