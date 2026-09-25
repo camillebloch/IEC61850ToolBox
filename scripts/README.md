@@ -48,7 +48,9 @@ GitHub Actions performs the same build automatically when
 
 ## `update-scl-for-ples.py`
 
-Applies the built-in SCL/SCD value-group expansion and optional XML rules to an input file, then writes the result to a separate output file.
+Applies the built-in SCL/SCD value-group expansion, adds the standard `DA`
+children to empty `DOType cdc="LPL"` elements, and applies optional XML rules
+to an input file. The result is written to a separate output file by default.
 
 ### Basic usage
 
@@ -64,7 +66,7 @@ From macOS/Linux:
 python3 scripts/update-scl-for-ples.py input.scd output.scd
 ```
 
-The input file is not modified. If the output argument is omitted, the script writes a sibling file named `input_patched.scd`:
+The input file is not modified by default. If the output argument is omitted, the script writes a sibling file named `input_patched.scd`:
 
 ```powershell
 python scripts/update-scl-for-ples.py input.scd
@@ -84,8 +86,26 @@ python3 scripts/update-scl-for-ples.py 'input-*.scd'
 When a wildcard matches multiple files, omit the output argument. An explicit
 output path can only be used when the input matches one file.
 
+To overwrite the input file or every file matched by a wildcard, use
+`--in-place`:
+
+```powershell
+python scripts/update-scl-for-ples.py --in-place "input-*.scd"
+```
+
+The `--in-place` option cannot be combined with an explicit output path.
+
 An explicit output path may be a new file or an existing file that should be replaced.
 Namespace declarations and prefixes from the input file, including unused declarations, are retained in the output.
+
+After each file is written successfully, the script appends a record to
+`patch.log` in the current working directory. Each record includes the input
+file, output file, and every built-in or JSON rule patch applied. Each patch
+includes the full SCL hierarchy path of the affected element, with its `name`
+or `id` value in parentheses when available, for example
+`SCL/DataTypeTemplates/DOType(empty)/DA(vendor)`. Files with no changes are
+recorded as `Patches: none`. Built-in patches log one entry for their updated
+parent (`DOType` or `DA`), while JSON rules log each matched element.
 
 ### Apply rules from a JSON file
 
