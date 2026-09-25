@@ -49,8 +49,12 @@ GitHub Actions performs the same build automatically when
 ## `update-scl-for-ples.py`
 
 Applies the built-in SCL/SCD value-group expansion, adds the standard `DA`
-children to empty `DOType cdc="LPL"` elements, and applies optional XML rules
-to an input file. The result is written to a separate output file by default.
+children to empty `DOType cdc="LPL"` elements, normalizes en dashes in `Val`
+text, and applies optional XML rules to an input file. The result is written
+to a separate output file by default.
+
+The hardcoded PLES IOP transformations are documented in
+the [PLES IOP rules reference](PLESIOPRULES.md).
 
 ### Basic usage
 
@@ -105,7 +109,14 @@ includes the full SCL hierarchy path of the affected element, with its `name`
 or `id` value in parentheses when available, for example
 `SCL/DataTypeTemplates/DOType(empty)/DA(vendor)`. Files with no changes are
 recorded as `Patches: none`. Built-in patches log one entry for their updated
-parent (`DOType` or `DA`), while JSON rules log each matched element.
+parent (`DOType` or `DA`), while JSON rules log each matched element. `LDevice`
+paths use `ldInst`; `LN` and `LN0` paths use `prefix`, `lnClass`, and `lnInst`
+(or the SCL `inst` attribute) joined with underscores, such as
+`LDevice(LD0)/LN(TCR_GLOG_1)`.
+For JSON `replace` rules, entries also show the target and values, for example
+`rule replace [text] '–' -> '-': SCL/Val`.
+For JSON `set-text` rules, entries show the assigned text, for example
+`rule set-text 's': SCL/DOI(Tms)/SDI(units)/DAI(SIUnit)/Val`.
 
 ### Apply rules from a JSON file
 
@@ -132,7 +143,59 @@ Run the script with the rules file:
 python scripts/update-scl-for-ples.py input.scd --rules rules.json
 ```
 
-Supported actions are `set-attribute`, `add-attribute`, `set-text`, and `delete`. An XPath beginning with `//{*}` matches an element by local name regardless of its XML namespace. Add `"required": true` to a rule when it must match at least one element.
+The current PLES IOP removal rules are available in
+[`ples-iop-rules.json`](ples-iop-rules.json):
+
+```powershell
+python scripts/update-scl-for-ples.py input.scd --rules scripts/ples-iop-rules.json
+```
+
+The rules handle the SCL default namespace and both `inst`/`lnInst` attribute
+spellings used by the source files. The ConnectedAP rule applies only to ICD
+files and removes matching `apName="AP1"` connections.
+The current value text replacements also normalize `φ` to `Phi`, `µ` to `u`,
+and `>616<` to `>99999<`.
+
+Rules can be limited to specific input extensions with the `extensions` array.
+Values are case-insensitive and may include or omit the leading dot:
+
+```json
+{
+  "action": "delete",
+  "extensions": ["icd", "iid"],
+  "xpath": "//IED[@type='PowerLogic-P7']//LN[@prefix='TCR']"
+}
+```
+
+Rules without `extensions` apply to every input file. A rule with
+`extensions: ["icd", "iid"]` is skipped for `.scd` files.
+
+Supported actions are `set-attribute`, `add-attribute`, `set-text`, `delete`,
+`replace`, and `replace-ancestor-attribute`. A `replace` rule searches either
+element text or an attribute:
+
+```json
+{
+  "action": "replace",
+  "target": "text",
+  "search": "\u2013",
+  "replace": "-",
+  "xpath": "//{*}Val"
+}
+```
+
+Use `"target": "attribute"` together with an `"attribute"` name to replace
+characters in an attribute value.
+
+The `replace-ancestor-attribute` action replaces an ancestor attribute value
+inside matched element text. It uses `ancestor`, `attribute`, and `replace`,
+for example to mask an enclosing IED name with `@`.
+
+Rules support standard XPath element names such as `//IED[@type='PowerLogic-P7']`.
+The `//{*}Element` shorthand matches an element by local name regardless of
+its XML namespace, and full XPath expressions using `local-name()` are also
+supported. Add `"required": true` to a rule when it must match at least one
+element.
 
 Individual rules can also be passed repeatedly on the command line:
 

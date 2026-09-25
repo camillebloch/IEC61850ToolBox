@@ -1,0 +1,63 @@
+[
+  {
+    "action": "delete",
+    "extensions": ["icd", "iid"],
+    "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='TCR' and (@lnClass='GLOC' or @lnClass='GLOG') and (@lnInst='1' or @inst='1')]"
+  },
+  {
+    "action": "delete",
+    "extensions": ["icd", "iid"],
+    "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='T103' and @lnClass='ITCI' and (@lnInst='1' or @inst='1')]"
+  },
+  {
+    "action": "delete",
+    "extensions": ["icd"],
+    "xpath": "//*[local-name()='ConnectedAP' and @apName='AP1' and @iedName = //*[local-name()='IED' and @type='PowerLogic-P7']/@name]"
+  },
+  {
+    "action": "replace",
+    "extensions": ["icd", "iid"],
+    "target": "text",
+    "search": "\u2013",
+    "replace": "-",
+    "xpath": "//{*}Val"
+  },
+  {
+    "action": "replace",
+    "extensions": ["icd", "iid"],
+    "target": "text",
+    "search": "φ",
+    "replace": "Phi",
+    "xpath": "//*[local-name()='DAI' and @name='d']/*[local-name()='Val']"
+  },
+  {
+    "action": "replace",
+    "extensions": ["icd", "iid"],
+    "target": "text",
+    "search": "µ",
+    "replace": "u",
+    "xpath": "//*[local-name()='DAI' and @name='d']/*[local-name()='Val']"
+  },
+  {
+    "action": "replace",
+    "extensions": ["icd", "iid"],
+    "target": "text",
+    "search": ">616<",
+    "replace": ">99999<",
+    "xpath": "//{*}Val"
+  },
+  {
+    "action": "set-text",
+    "extensions": ["icd", "iid"],
+    "value": "s",
+    "xpath": "//*[local-name()='DOI' and @name='Tms']/*[local-name()='SDI' and @name='units']/*[local-name()='DAI' and @name='SIUnit']/*[local-name()='Val']"
+  },
+  {
+    "action": "replace-ancestor-attribute",
+    "extensions": ["icd", "iid"],
+    "ancestor": "IED",
+    "attribute": "name",
+    "replace": "@",
+    "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='DOI' and @name='GrRef']//*[local-name()='DAI' and @name='setSrcRef']//*[local-name()='Val']"
+  }
+]

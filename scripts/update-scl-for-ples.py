@@ -23,12 +23,12 @@ from lxml import etree as ET
 
 
 def elements(root, xpath):
-	"""Find elements while accepting the convenient //{*}tag notation."""
+	"""Evaluate XPath while accepting the convenient //{*}tag notation."""
 	if xpath.startswith("//{*}"):
 		tag = xpath[5:]
 		return [element for element in root.iter()
 				if element.tag.rsplit("}", 1)[-1] == tag]
-	return root.findall(xpath)
+	return root.getroottree().xpath(xpath)
 
 
 def parent_map(root):
@@ -39,8 +39,16 @@ def element_path(root, element):
 	parts = []
 	current = element
 	while current is not None:
-		identifier = current.get("name") or current.get("id")
 		label = current.tag.rsplit("}", 1)[-1]
+		if label == "LDevice":
+			identifier = current.get("ldInst")
+		elif label in ("LN", "LN0"):
+			ln_inst = current.get("lnInst") or current.get("inst")
+			identifier = "".join(value for value in (
+				current.get("prefix"), current.get("lnClass"), ln_inst)
+				if value)
+		else:
+			identifier = current.get("name") or current.get("id")
 		if identifier:
 			label = "{}({})".format(label, identifier)
 		parts.append(label)
@@ -104,8 +112,46 @@ def apply_rule(root, rule):
 		if rule.get("required", False):
 			raise ValueError("rule matched no elements: {}".format(rule["xpath"]))
 		return []
-	matched_paths = [element_path(root, element) for element in matches]
+	if action == "replace":
+		target = rule.get("target", "text")
+		search = str(rule["search"])
+		replacement = str(rule.get("replace", ""))
+		patched_paths = []
+		for element in matches:
+			if target == "text":
+				value = element.text
+				if value is not None and search in value:
+					element.text = value.replace(search, replacement)
+					patched_paths.append(element_path(root, element))
+			elif target == "attribute":
+				attribute = rule["attribute"]
+				value = element.get(attribute)
+				if value is not None and search in value:
+					element.set(attribute, value.replace(search, replacement))
+					patched_paths.append(element_path(root, element))
+			else:
+				raise ValueError("unsupported replace target: {}".format(target))
+		return patched_paths
+	if action == "replace-ancestor-attribute":
+		ancestor_tag = rule.get("ancestor", "IED")
+		attribute = rule["attribute"]
+		replacement = str(rule.get("replace", ""))
+		patched_paths = []
+		for element in matches:
+			ancestor = element.getparent()
+			while (ancestor is not None and
+				ancestor.tag.rsplit("}", 1)[-1] != ancestor_tag):
+				ancestor = ancestor.getparent()
+			if ancestor is None:
+				continue
+			search = ancestor.get(attribute)
+			value = element.text
+			if search and value is not None and search in value:
+				element.text = value.replace(search, replacement)
+				patched_paths.append(element_path(root, element))
+		return patched_paths
 
+	matched_paths = [element_path(root, element) for element in matches]
 	if action in ("set-attribute", "add-attribute"):
 		for element in matches:
 			element.set(rule["name"], str(rule.get("value", "")))
@@ -121,6 +167,16 @@ def apply_rule(root, rule):
 	else:
 		raise ValueError("unsupported rule action: {}".format(action))
 	return matched_paths
+
+
+def rule_applies_to_file(rule, input_path):
+	extensions = rule.get("extensions")
+	if not extensions:
+		return True
+	allowed_extensions = {
+		str(extension).lower().lstrip(".") for extension in extensions
+	}
+	return input_path.suffix.lower().lstrip(".") in allowed_extensions
 
 
 def load_rules(args):
@@ -160,9 +216,25 @@ def process_file(input_path, output_path, rules):
 	for path in expand_single_val_sgroups(tree.getroot()):
 		patches.append("expand-single-val-sgroups: {}".format(path))
 	for rule in rules:
+		if not rule_applies_to_file(rule, input_path):
+			continue
 		for path in apply_rule(tree.getroot(), rule):
-			patches.append("rule {} ({}): {}".format(
-				rule.get("action"), rule["xpath"], path))
+			if rule.get("action") == "replace":
+				target = rule.get("target", "text")
+				if target == "attribute":
+					target = "attribute:{}".format(rule["attribute"])
+				patches.append("rule replace [{}] {!r} -> {!r}: {}".format(
+					target, rule["search"], rule.get("replace", ""), path))
+			elif rule.get("action") == "set-text":
+				patches.append("rule set-text {!r}: {}".format(
+					rule.get("value", ""), path))
+			elif rule.get("action") == "replace-ancestor-attribute":
+				patches.append("rule replace ancestor {}.{} -> {!r}: {}".format(
+					rule.get("ancestor", "IED"), rule["attribute"],
+					rule.get("replace", ""), path))
+			else:
+				patches.append("rule {} ({}): {}".format(
+					rule.get("action"), rule["xpath"], path))
 	ET.indent(tree, space="  ")
 	tree.write(output_path, encoding="utf-8", xml_declaration=True)
 	return patches
