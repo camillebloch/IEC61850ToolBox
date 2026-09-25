@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'scripts/update-scl-for-ples.py'
+      - 'scripts/ples-iop-rules.json'
       - '.github/workflows/build-scl-tool.yml'
   workflow_dispatch:
 
@@ -32,10 +33,16 @@ jobs:
       - name: Smoke test executable
         run: .\dist\update-scl-for-ples.exe --help
 
-      - name: Upload executable artifact
+      - name: Prepare release files
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item dist\update-scl-for-ples.exe release\
+          Copy-Item scripts\ples-iop-rules.json release\
+
+      - name: Upload executable and rules artifact
         uses: actions/upload-artifact@v4
         with:
           name: update-scl-for-ples-${{ github.sha }}
-          path: dist/update-scl-for-ples.exe
+          path: release
           if-no-files-found: error
           retention-days: 30
