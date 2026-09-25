@@ -11,6 +11,16 @@ npm run dev
 
 Then open the local URL displayed by Vite in your browser.
 
+## Deployment
+
+The application is deployed to GitHub Pages by the
+[Deploy to GitHub Pages workflow](.github/workflows/deploy-pages.yml) after
+changes are pushed to `main`. It is available at:
+
+https://milka34Fr.github.io/IEC61850ToolBox/
+
+The workflow can also be started manually from the GitHub Actions tab.
+
 ## Documentation
 
 - User documentation:
