@@ -22,6 +22,13 @@ from pathlib import Path
 
 from lxml import etree as ET
 
+HARDCODED_PATCH_NAMES = {
+	"remove-unused-data-type-templates",
+	"add-empty-lpl-das",
+	"expand-single-val-sgroups",
+	"truncate-desc-255",
+}
+
 
 def elements(root, xpath):
 	"""Evaluate XPath while accepting the convenient //{*}tag notation."""
@@ -103,6 +110,17 @@ def add_empty_lpl_das(root):
 			ET.SubElement(do_type, da_tag, name=name, bType=b_type,
 						fc=functional_constraint)
 		patched_paths.append(element_path(root, do_type))
+	return patched_paths
+
+
+def truncate_desc_attributes(root, max_length=255):
+	"""Truncate every desc attribute that exceeds the SCL limit."""
+	patched_paths = []
+	for element in root.iter():
+		description = element.get("desc")
+		if description is not None and len(description) > max_length:
+			element.set("desc", description[:max_length])
+			patched_paths.append((element_path(root, element), len(description)))
 	return patched_paths
 
 
@@ -338,12 +356,26 @@ def rule_applies_to_file(rule, input_path):
 
 def load_rules(args):
 	rules = []
+	hardcoded_patches = {}
 	if args.rules:
 		with args.rules.open(encoding="utf-8") as stream:
 			data = json.load(stream)
-		rules.extend(data if isinstance(data, list) else data["rules"])
+		if isinstance(data, list):
+			rules.extend(data)
+		else:
+			rules.extend(data["rules"])
+			hardcoded_patches = data.get("hardcodedPatches", {})
+			if not isinstance(hardcoded_patches, dict):
+				raise ValueError("hardcodedPatches must be a JSON object")
+			unknown_patches = set(hardcoded_patches) - HARDCODED_PATCH_NAMES
+			if unknown_patches:
+				raise ValueError("unknown hardcoded patch: {}".format(
+					", ".join(sorted(unknown_patches))))
+			if any(not isinstance(enabled, bool)
+				   for enabled in hardcoded_patches.values()):
+				raise ValueError("hardcoded patch settings must be true or false")
 	rules.extend(json.loads(rule) for rule in args.rule)
-	return rules
+	return rules, hardcoded_patches
 
 
 def parse_xml(path):
@@ -365,16 +397,20 @@ def write_patch_log(log_path, input_path, output_path, patches):
 		stream.write("\n")
 
 
-def process_file(input_path, output_path, rules):
+def process_file(input_path, output_path, rules, hardcoded_patches):
 	tree = parse_xml(input_path)
 	patches = []
-	if input_path.suffix.lower() in (".icd", ".iid"):
+	patch_enabled = lambda name: hardcoded_patches.get(name, True)
+	if (patch_enabled("remove-unused-data-type-templates") and
+		input_path.suffix.lower() in (".icd", ".iid")):
 		for path in remove_unused_data_type_templates(tree.getroot()):
 			patches.append("remove-unused-data-type-template: {}".format(path))
-	for path in add_empty_lpl_das(tree.getroot()):
-		patches.append("add-empty-lpl-das: {}".format(path))
-	for path in expand_single_val_sgroups(tree.getroot()):
-		patches.append("expand-single-val-sgroups: {}".format(path))
+	if patch_enabled("add-empty-lpl-das"):
+		for path in add_empty_lpl_das(tree.getroot()):
+			patches.append("add-empty-lpl-das: {}".format(path))
+	if patch_enabled("expand-single-val-sgroups"):
+		for path in expand_single_val_sgroups(tree.getroot()):
+			patches.append("expand-single-val-sgroups: {}".format(path))
 	for rule in rules:
 		if not rule_applies_to_file(rule, input_path):
 			continue
@@ -398,6 +434,10 @@ def process_file(input_path, output_path, rules):
 			else:
 				patches.append("rule {} ({}): {}".format(
 					rule.get("action"), rule["xpath"], path))
+	if patch_enabled("truncate-desc-255"):
+		for path, original_length in truncate_desc_attributes(tree.getroot()):
+			patches.append("truncate-desc-255: {} ({} -> 255 characters)".format(
+				path, original_length))
 	ET.indent(tree, space="  ")
 	tree.write(output_path, encoding="utf-8", xml_declaration=True)
 	return patches
@@ -424,12 +464,12 @@ def main():
 		if args.output and len(input_paths) > 1:
 			raise ValueError("an explicit output path requires exactly one input file")
 
-		rules = load_rules(args)
+		rules, hardcoded_patches = load_rules(args)
 		log_path = Path("patch.log")
 		for input_path in input_paths:
 			output = input_path if args.in_place else args.output or input_path.with_name(
 				input_path.stem + "_patched" + input_path.suffix)
-			patches = process_file(input_path, output, rules)
+			patches = process_file(input_path, output, rules, hardcoded_patches)
 			write_patch_log(log_path, input_path, output, patches)
 	except (OSError, ET.ParseError, KeyError, ValueError, json.JSONDecodeError) as error:
 		print("error: {}".format(error), file=sys.stderr)
