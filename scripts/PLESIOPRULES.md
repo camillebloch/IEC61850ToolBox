@@ -180,15 +180,75 @@ that exact substring in the `Val` text is replaced by `@`. The rest of the
 value remains unchanged. For example, `prefix/P7_MAIN/suffix` becomes
 `prefix/@/suffix`.
 
+## Rule 6: Rename a Data Type Template ID
+
+**JSON action:** `rename-data-type-template-id`
+
+Set `search` to the existing ID and `replace` to its new ID. `templateTypes`
+can restrict which definition kinds are eligible; when omitted, all four
+supported kinds are searched. ID matching is case-sensitive and exact.
+
+```json
+{
+  "action": "rename-data-type-template-id",
+  "search": "OldTypeId",
+  "replace": "NewTypeId",
+  "templateTypes": ["LNodeType", "DOType", "DAType", "EnumType"],
+  "required": true
+}
+```
+
+When the matching definition is found inside `DataTypeTemplates`, the rule
+renames its `id` and updates references according to their SCL roles:
+
+| Definition | References updated |
+| --- | --- |
+| `LNodeType` | `LN`, `LN0`, and substation `LNode` `lnType` references |
+| `DOType` | `LNodeType/DO` and `DOType/SDO` `type` references |
+| `DAType` | `DOType/DA` and `DAType/BDA` `type` references |
+| `EnumType` | `DOType/DA` and `DAType/BDA` `type` references |
+
+Other attributes and element text are not searched or changed. The rule refuses
+to rename to an ID already used by another data type template. With
+`"required": true`, a missing source ID is reported as an error.
+
+The mapping follows the IEC 61850-6 SCL schema: `id` values are unique within
+`DataTypeTemplates`; its key references connect `LNodeType/DO` and
+`DOType/SDO` to `DOType` IDs, and `DOType/DA` plus `DAType/BDA` to `DAType` or
+`EnumType` IDs. The schema also defines logical-node `lnType` references to
+`LNodeType` IDs. See the bundled 2007B4 schema in
+[`SCL_DataTypeTemplates.xsd`](../tests/fixtures/SCL_DataTypeTemplates.xsd) and
+the [IEC 61850-6 consolidated publication](https://webstore.iec.ch/publication/103863).
+
+## Rule 7: Remove Unused Data Type Templates
+
+**Patch name:** `remove-unused-data-type-template`
+
+This hardcoded cleanup runs only for `.icd` and `.iid` inputs. It starts from
+logical-node type references (`LN/@lnType`, `LN0/@lnType`, and
+`LNode/@lnType`) and retains only reachable definitions:
+
+1. Remove unreferenced `LNodeType` definitions.
+2. Keep `DOType` definitions referenced by `LNodeType/DO/@type`, then follow
+  nested `DOType/SDO/@type` references. Remove all other `DOType` definitions.
+3. Keep `DAType` and `EnumType` definitions referenced by `DOType/DA/@type`,
+  then follow `DAType/BDA/@type` references. Remove all other definitions of
+  those two types.
+
+ID comparisons are exact and case-sensitive. A nested type stays when it is
+reachable through an SDO or BDA chain; types used only by removed templates are
+removed as well. Each removed definition is recorded in `patch.log`.
+
 ## Execution Order
 
 For each input file, transformations run in this order:
 
-1. Add the four `DA` children to empty `LPL` `DOType` elements.
-2. Expand eligible single-value `DA` setting groups.
-3. Apply rules supplied through `--rules` and repeated `--rule` options.
-4. Write the output file.
-5. Append the applied patch paths to `patch.log` after a successful write.
+1. For ICD/IID inputs, remove unreachable data type templates.
+2. Add the four `DA` children to remaining empty `LPL` `DOType` elements.
+3. Expand eligible single-value `DA` setting groups.
+4. Apply rules supplied through `--rules` and repeated `--rule` options.
+5. Write the output file.
+6. Append the applied patch paths to `patch.log` after a successful write.
 
 ## Configurable Rules
 
@@ -201,6 +261,7 @@ They support these actions:
 - `delete`
 - `replace`
 - `replace-ancestor-attribute`
+- `rename-data-type-template-id`
 
 The current JSON file also includes the `set-text` rule that normalizes
 `DOI(name="Tms")/SDI(name="units")/DAI(name="SIUnits")/Val` to `s`.
