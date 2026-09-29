@@ -6,6 +6,7 @@ Rules are JSON objects with one of these actions:
   {"action": "set-text", "xpath": "//{*}Private", "value": "text"}
   {"action": "delete", "xpath": "//{*}Private"}
   {"action": "add-attribute", "xpath": "//{*}IED", "name": "x", "value": "y"}
+	{"action": "rename-data-type-template-id", "search": "old", "replace": "new"}
 
 The XPath uses ElementTree syntax.  ``{*}`` can be used to match elements in
 any namespace, which is useful for SCL files.
@@ -105,8 +106,164 @@ def add_empty_lpl_das(root):
 	return patched_paths
 
 
+def remove_unused_data_type_templates(root):
+	"""Remove data type templates that are unreachable from logical nodes."""
+	template_names = {"LNodeType", "DOType", "DAType", "EnumType"}
+	data_type_templates = [element for element in root.iter()
+						   if element.tag.rsplit("}", 1)[-1] == "DataTypeTemplates"]
+	definitions = [child for container in data_type_templates for child in container
+				if child.tag.rsplit("}", 1)[-1] in template_names]
+	removed_paths = []
+
+	def remove_unused(template_definitions, used_ids):
+		for definition in template_definitions:
+			identifier = definition.get("id")
+			if identifier is not None and identifier not in used_ids:
+				removed_paths.append(element_path(root, definition))
+				definition.getparent().remove(definition)
+
+	def definitions_by_id(template_definitions):
+		by_id = {}
+		for definition in template_definitions:
+			identifier = definition.get("id")
+			if identifier is not None:
+				by_id.setdefault(identifier, []).append(definition)
+		return by_id
+
+	lnode_types = [definition for definition in definitions
+				   if definition.tag.rsplit("}", 1)[-1] == "LNodeType"]
+	used_lnode_types = {
+		element.get("lnType")
+		for element in root.iter()
+		if (element.tag.rsplit("}", 1)[-1] in ("LN", "LN0", "LNode") and
+			element.get("lnType") is not None)
+	}
+	remove_unused(lnode_types, used_lnode_types)
+	live_lnode_types = [definition for definition in lnode_types
+						if definition.getparent() is not None]
+
+	do_types = [definition for definition in definitions
+				if definition.tag.rsplit("}", 1)[-1] == "DOType"]
+	do_types_by_id = definitions_by_id(do_types)
+	used_do_types = set()
+	for lnode_type in live_lnode_types:
+		used_do_types.update(child.get("type") for child in lnode_type
+							 if child.tag.rsplit("}", 1)[-1] == "DO" and
+							 child.get("type") is not None)
+
+	# Keep nested SDO types reachable from DO references in used LNodeTypes.
+	pending_do_types = list(used_do_types)
+	while pending_do_types:
+		identifier = pending_do_types.pop()
+		for do_type in do_types_by_id.get(identifier, []):
+			for child in do_type:
+				if (child.tag.rsplit("}", 1)[-1] == "SDO" and
+					child.get("type") is not None and
+					child.get("type") not in used_do_types):
+					used_do_types.add(child.get("type"))
+					pending_do_types.append(child.get("type"))
+	remove_unused(do_types, used_do_types)
+	live_do_types = [definition for definition in do_types
+					 if definition.getparent() is not None]
+
+	structured_types = [definition for definition in definitions
+						if definition.tag.rsplit("}", 1)[-1] in ("DAType", "EnumType")]
+	structured_types_by_id = definitions_by_id(structured_types)
+	used_structured_types = set()
+	for do_type in live_do_types:
+		for child in do_type:
+			if (child.tag.rsplit("}", 1)[-1] == "DA" and
+				child.get("type") in structured_types_by_id):
+				used_structured_types.add(child.get("type"))
+
+	# Keep BDA dependencies reachable from used DAType definitions.
+	pending_structured_types = list(used_structured_types)
+	while pending_structured_types:
+		identifier = pending_structured_types.pop()
+		for structured_type in structured_types_by_id.get(identifier, []):
+			if structured_type.tag.rsplit("}", 1)[-1] != "DAType":
+				continue
+			for child in structured_type:
+				if (child.tag.rsplit("}", 1)[-1] == "BDA" and
+					child.get("type") in structured_types_by_id and
+					child.get("type") not in used_structured_types):
+					used_structured_types.add(child.get("type"))
+					pending_structured_types.append(child.get("type"))
+	remove_unused(structured_types, used_structured_types)
+	return removed_paths
+
+
+def rename_data_type_template_id(root, rule):
+	"""Rename a template ID and its SCL-defined references exactly."""
+	template_types = {
+		"LNodeType", "DOType", "DAType", "EnumType"
+	}
+	requested_types = rule.get("templateTypes", template_types)
+	if (not isinstance(requested_types, (list, set, tuple)) or
+		any(not isinstance(template_type, str) for template_type in requested_types)):
+		raise ValueError("templateTypes must be a list of template names")
+	selected_types = set(requested_types)
+	if not selected_types or not selected_types.issubset(template_types):
+		raise ValueError("templateTypes must contain valid data type template names")
+	search = str(rule["search"])
+	replacement = str(rule["replace"])
+	if not search or not replacement:
+		raise ValueError("template ID search and replacement values must be non-empty")
+	if search == replacement:
+		return []
+
+	data_type_templates = [element for element in root.iter()
+						   if element.tag.rsplit("}", 1)[-1] == "DataTypeTemplates"]
+	definitions = [child for templates in data_type_templates for child in templates
+				if (child.tag.rsplit("}", 1)[-1] in selected_types and
+					child.get("id") == search)]
+	if not definitions:
+		if rule.get("required", False):
+			raise ValueError("data type template ID not found: {}".format(search))
+		return []
+
+	all_definitions = [child for templates in data_type_templates for child in templates
+				   if child.tag.rsplit("}", 1)[-1] in template_types]
+	if any(definition.get("id") == replacement and definition not in definitions
+		   for definition in all_definitions):
+		raise ValueError("data type template ID already exists: {}".format(replacement))
+
+	matched_types = {definition.tag.rsplit("}", 1)[-1]
+					 for definition in definitions}
+	patches = []
+	for definition in definitions:
+		patches.append(element_path(root, definition))
+		definition.set("id", replacement)
+
+	for element in root.iter():
+		local_name = element.tag.rsplit("}", 1)[-1]
+		parent = element.getparent()
+		parent_name = parent.tag.rsplit("}", 1)[-1] if parent is not None else ""
+		reference_attribute = None
+		if ("DOType" in matched_types and local_name == "DO" and
+			parent_name == "LNodeType" and element.get("type") == search):
+			reference_attribute = "type"
+		elif ("DOType" in matched_types and local_name == "SDO" and
+			  parent_name == "DOType" and element.get("type") == search):
+			reference_attribute = "type"
+		elif (matched_types.intersection({"DAType", "EnumType"}) and
+			  ((local_name == "DA" and parent_name == "DOType") or
+			   (local_name == "BDA" and parent_name == "DAType")) and
+			  element.get("type") == search):
+			reference_attribute = "type"
+		elif ("LNodeType" in matched_types and local_name in ("LN", "LN0", "LNode")
+			  and element.get("lnType") == search):
+			reference_attribute = "lnType"
+		if reference_attribute:
+			patches.append(element_path(root, element))
+			element.set(reference_attribute, replacement)
+	return patches
+
+
 def apply_rule(root, rule):
 	action = rule.get("action")
+	if action == "rename-data-type-template-id":
+		return rename_data_type_template_id(root, rule)
 	matches = elements(root, rule["xpath"])
 	if not matches:
 		if rule.get("required", False):
@@ -211,6 +368,9 @@ def write_patch_log(log_path, input_path, output_path, patches):
 def process_file(input_path, output_path, rules):
 	tree = parse_xml(input_path)
 	patches = []
+	if input_path.suffix.lower() in (".icd", ".iid"):
+		for path in remove_unused_data_type_templates(tree.getroot()):
+			patches.append("remove-unused-data-type-template: {}".format(path))
 	for path in add_empty_lpl_das(tree.getroot()):
 		patches.append("add-empty-lpl-das: {}".format(path))
 	for path in expand_single_val_sgroups(tree.getroot()):
@@ -232,6 +392,9 @@ def process_file(input_path, output_path, rules):
 				patches.append("rule replace ancestor {}.{} -> {!r}: {}".format(
 					rule.get("ancestor", "IED"), rule["attribute"],
 					rule.get("replace", ""), path))
+			elif rule.get("action") == "rename-data-type-template-id":
+				patches.append("rule rename data type template ID {!r} -> {!r}: {}".format(
+					rule["search"], rule["replace"], path))
 			else:
 				patches.append("rule {} ({}): {}".format(
 					rule.get("action"), rule["xpath"], path))

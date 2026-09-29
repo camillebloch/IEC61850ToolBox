@@ -59,5 +59,17 @@
     "attribute": "name",
     "replace": "@",
     "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='DOI' and @name='GrRef']//*[local-name()='DAI' and @name='setSrcRef']//*[local-name()='Val']"
+  },
+  {
+    "action": "rename-data-type-template-id",
+    "extensions": ["scd"],
+    "search": "ENS_BEH", 
+    "replace": "ENS_BEH_P7"
+  },
+  {
+    "action": "rename-data-type-template-id",
+    "extensions": ["scd"],
+    "search": "ENS_HEALTH", 
+    "replace": "ENS_HEALTH_P7"
   }
 ]

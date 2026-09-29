@@ -50,8 +50,9 @@ GitHub Actions performs the same build automatically when
 
 Applies the built-in SCL/SCD value-group expansion, adds the standard `DA`
 children to empty `DOType cdc="LPL"` elements, normalizes en dashes in `Val`
-text, and applies optional XML rules to an input file. The result is written
-to a separate output file by default.
+text, removes unused data type templates from ICD/IID inputs, and applies
+optional XML rules to an input file. The result is written to a separate output
+file by default.
 
 The hardcoded PLES IOP transformations are documented in
 the [PLES IOP rules reference](PLESIOPRULES.md).
@@ -171,8 +172,9 @@ Rules without `extensions` apply to every input file. A rule with
 `extensions: ["icd", "iid"]` is skipped for `.scd` files.
 
 Supported actions are `set-attribute`, `add-attribute`, `set-text`, `delete`,
-`replace`, and `replace-ancestor-attribute`. A `replace` rule searches either
-element text or an attribute:
+`replace`, `replace-ancestor-attribute`, and
+`rename-data-type-template-id`. A `replace` rule searches either element text
+or an attribute:
 
 ```json
 {
@@ -190,6 +192,24 @@ characters in an attribute value.
 The `replace-ancestor-attribute` action replaces an ancestor attribute value
 inside matched element text. It uses `ancestor`, `attribute`, and `replace`,
 for example to mask an enclosing IED name with `@`.
+
+The `rename-data-type-template-id` action renames an ID and its SCL-defined
+references using case-sensitive exact matching. Set `search` and `replace`;
+optionally limit definitions with `templateTypes`:
+
+```json
+{
+  "action": "rename-data-type-template-id",
+  "search": "OldTypeId",
+  "replace": "NewTypeId",
+  "templateTypes": ["LNodeType", "DOType", "DAType", "EnumType"],
+  "required": true
+}
+```
+
+The action updates the matching template definition and its schema-defined
+references, and rejects a replacement ID already used by another template.
+See [`PLESIOPRULES.md`](PLESIOPRULES.md) for the reference mapping.
 
 Rules support standard XPath element names such as `//IED[@type='PowerLogic-P7']`.
 The `//{*}Element` shorthand matches an element by local name regardless of
