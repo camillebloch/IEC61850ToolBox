@@ -1,4 +1,11 @@
-[
+{
+  "hardcodedPatches": {
+    "remove-unused-data-type-templates": true,
+    "add-empty-lpl-das": true,
+    "expand-single-val-sgroups": true,
+    "truncate-desc-255": true
+  },
+  "rules": [
   {
     "action": "delete",
     "extensions": ["icd", "iid"],
@@ -72,4 +79,5 @@
     "search": "ENS_HEALTH", 
     "replace": "ENS_HEALTH_P7"
   }
-]
+  ]
+}

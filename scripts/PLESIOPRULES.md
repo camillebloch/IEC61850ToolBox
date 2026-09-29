@@ -239,6 +239,23 @@ ID comparisons are exact and case-sensitive. A nested type stays when it is
 reachable through an SDO or BDA chain; types used only by removed templates are
 removed as well. Each removed definition is recorded in `patch.log`.
 
+## Rule 8: Limit Description Length
+
+**Patch name:** `truncate-desc-255`
+
+The script checks every XML element for a `desc` attribute. If its value is
+longer than 255 characters, it keeps the first 255 characters and logs the
+element path and original length. Values of 255 characters or fewer are left
+unchanged. This patch runs after JSON rules.
+
+## Hardcoded Patch Switches
+
+Each hardcoded patch can be independently enabled or disabled in the top-level
+`hardcodedPatches` object in the JSON rule file. The available names are
+`remove-unused-data-type-templates`, `add-empty-lpl-das`,
+`expand-single-val-sgroups`, and `truncate-desc-255`. A value of `false`
+disables that patch; omitted switches default to `true` for compatibility.
+
 ## Execution Order
 
 For each input file, transformations run in this order:
@@ -247,8 +264,9 @@ For each input file, transformations run in this order:
 2. Add the four `DA` children to remaining empty `LPL` `DOType` elements.
 3. Expand eligible single-value `DA` setting groups.
 4. Apply rules supplied through `--rules` and repeated `--rule` options.
-5. Write the output file.
-6. Append the applied patch paths to `patch.log` after a successful write.
+5. Truncate `desc` attributes longer than 255 characters.
+6. Write the output file.
+7. Append the applied patch paths to `patch.log` after a successful write.
 
 ## Configurable Rules
 

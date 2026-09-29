@@ -50,9 +50,9 @@ GitHub Actions performs the same build automatically when
 
 Applies the built-in SCL/SCD value-group expansion, adds the standard `DA`
 children to empty `DOType cdc="LPL"` elements, normalizes en dashes in `Val`
-text, removes unused data type templates from ICD/IID inputs, and applies
-optional XML rules to an input file. The result is written to a separate output
-file by default.
+text, removes unused data type templates from ICD/IID inputs, truncates long
+`desc` attributes, and applies optional XML rules to an input file. The result
+is written to a separate output file by default.
 
 The hardcoded PLES IOP transformations are documented in
 the [PLES IOP rules reference](PLESIOPRULES.md).
@@ -150,6 +150,26 @@ The current PLES IOP removal rules are available in
 ```powershell
 python scripts/update-scl-for-ples.py input.scd --rules scripts/ples-iop-rules.json
 ```
+
+The rule file has a top-level `hardcodedPatches` object to toggle built-in
+patches independently:
+
+```json
+{
+  "hardcodedPatches": {
+    "remove-unused-data-type-templates": true,
+    "add-empty-lpl-das": true,
+    "expand-single-val-sgroups": true,
+    "truncate-desc-255": false
+  },
+  "rules": []
+}
+```
+
+Set a switch to `false` to disable that patch. Omitted switches default to
+`true`; the `rules` array contains the configurable XML rules. The
+`truncate-desc-255` patch shortens any `desc` attribute over 255 characters to
+its first 255 characters.
 
 The rules handle the SCL default namespace and both `inst`/`lnInst` attribute
 spellings used by the source files. The ConnectedAP rule applies only to ICD
