@@ -60,3 +60,9 @@ The changelog must track major user-facing evolutions, for example:
 - significant behavior changes
 
 Do not record every minor code edit. Group small related changes into clear, high-level functional summaries.
+
+## Script development rules
+
+Scripts in `scripts/` must be documented in [`scripts/README.md`](scripts/README.md).
+
+When adding or changing a script, update that README with the script's purpose, prerequisites, supported inputs and options, and copyable commands for PowerShell and macOS/Linux. Keep the README's command examples aligned with the script's actual command-line interface.
