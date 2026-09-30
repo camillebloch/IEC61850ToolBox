@@ -1,7 +1,14 @@
 {
   "hardcodedPatches": {
-    "remove-unused-data-type-templates": true,
+    "remove-unused-data-type-templates": {
+      "enabled": true,
+      "extensions": ["icd", "iid"]
+    },
     "add-empty-lpl-das": true,
+    "add-enum-default-values": {
+      "enabled": true,
+      "extensions": ["icd", "iid"]
+    },
     "expand-single-val-sgroups": true,
     "truncate-desc-255": true
   },

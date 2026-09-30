@@ -25,9 +25,17 @@ from lxml import etree as ET
 HARDCODED_PATCH_NAMES = {
 	"remove-unused-data-type-templates",
 	"add-empty-lpl-das",
+	"add-enum-default-values",
 	"expand-single-val-sgroups",
 	"truncate-desc-255",
 }
+
+
+def local_name(element):
+	tag = element.tag
+	if not isinstance(tag, str):
+		return ""
+	return tag.rsplit("}", 1)[-1]
 
 
 def elements(root, xpath):
@@ -35,7 +43,7 @@ def elements(root, xpath):
 	if xpath.startswith("//{*}"):
 		tag = xpath[5:]
 		return [element for element in root.iter()
-				if element.tag.rsplit("}", 1)[-1] == tag]
+				if local_name(element) == tag]
 	return root.getroottree().xpath(xpath)
 
 
@@ -47,7 +55,7 @@ def element_path(root, element):
 	parts = []
 	current = element
 	while current is not None:
-		label = current.tag.rsplit("}", 1)[-1]
+		label = local_name(current)
 		if label == "LDevice":
 			identifier = current.get("ldInst")
 		elif label in ("LN", "LN0"):
@@ -70,12 +78,12 @@ def expand_single_val_sgroups(root):
 	"""Duplicate an ungrouped Val under applicable DA elements for groups 1-8."""
 	patched_paths = []
 	for da in list(root.iter()):
-		if (da.tag.rsplit("}", 1)[-1] != "DA" or
+		if (local_name(da) != "DA" or
 			da.get("fc") not in ("SE", "SG")):
 			continue
 
 		vals = [child for child in da
-				if child.tag.rsplit("}", 1)[-1] == "Val"]
+				if local_name(child) == "Val"]
 		if len(vals) != 1 or "sGroup" in vals[0].attrib:
 			continue
 
@@ -100,7 +108,7 @@ def add_empty_lpl_das(root):
 	)
 	patched_paths = []
 	for do_type in root.iter():
-		if (do_type.tag.rsplit("}", 1)[-1] != "DOType" or
+		if (local_name(do_type) != "DOType" or
 			do_type.get("cdc") != "LPL" or len(do_type) != 0):
 			continue
 
@@ -110,6 +118,38 @@ def add_empty_lpl_das(root):
 			ET.SubElement(do_type, da_tag, name=name, bType=b_type,
 						fc=functional_constraint)
 		patched_paths.append(element_path(root, do_type))
+	return patched_paths
+
+
+def add_enum_default_values(root):
+	"""Add the first EnumVal as Val for enum DAs/BDAs without a Val."""
+	enum_values_by_id = {}
+	for element in root.iter():
+		if local_name(element) != "EnumType":
+			continue
+		identifier = element.get("id")
+		if identifier is None:
+			continue
+		first_value = next((child for child in element
+							if local_name(child) == "EnumVal"), None)
+		if first_value is not None:
+			enum_values_by_id.setdefault(identifier, first_value.text)
+
+	patched_paths = []
+	for element in root.iter():
+		if (local_name(element) not in ("DA", "BDA") or
+			element.get("bType") != "Enum" or
+			any(local_name(child) == "Val" for child in element)):
+			continue
+
+		enum_type_id = element.get("type")
+		if enum_type_id not in enum_values_by_id:
+			continue
+		namespace = ET.QName(element).namespace
+		val_tag = "{{{}}}Val".format(namespace) if namespace else "Val"
+		value_element = ET.SubElement(element, val_tag)
+		value_element.text = enum_values_by_id[enum_type_id]
+		patched_paths.append(element_path(root, element))
 	return patched_paths
 
 
@@ -128,9 +168,9 @@ def remove_unused_data_type_templates(root):
 	"""Remove data type templates that are unreachable from logical nodes."""
 	template_names = {"LNodeType", "DOType", "DAType", "EnumType"}
 	data_type_templates = [element for element in root.iter()
-						   if element.tag.rsplit("}", 1)[-1] == "DataTypeTemplates"]
+						   if local_name(element) == "DataTypeTemplates"]
 	definitions = [child for container in data_type_templates for child in container
-				if child.tag.rsplit("}", 1)[-1] in template_names]
+				if local_name(child) in template_names]
 	removed_paths = []
 
 	def remove_unused(template_definitions, used_ids):
@@ -149,11 +189,11 @@ def remove_unused_data_type_templates(root):
 		return by_id
 
 	lnode_types = [definition for definition in definitions
-				   if definition.tag.rsplit("}", 1)[-1] == "LNodeType"]
+				   if local_name(definition) == "LNodeType"]
 	used_lnode_types = {
 		element.get("lnType")
 		for element in root.iter()
-		if (element.tag.rsplit("}", 1)[-1] in ("LN", "LN0", "LNode") and
+		if (local_name(element) in ("LN", "LN0", "LNode") and
 			element.get("lnType") is not None)
 	}
 	remove_unused(lnode_types, used_lnode_types)
@@ -161,12 +201,12 @@ def remove_unused_data_type_templates(root):
 						if definition.getparent() is not None]
 
 	do_types = [definition for definition in definitions
-				if definition.tag.rsplit("}", 1)[-1] == "DOType"]
+				if local_name(definition) == "DOType"]
 	do_types_by_id = definitions_by_id(do_types)
 	used_do_types = set()
 	for lnode_type in live_lnode_types:
 		used_do_types.update(child.get("type") for child in lnode_type
-							 if child.tag.rsplit("}", 1)[-1] == "DO" and
+								 if local_name(child) == "DO" and
 							 child.get("type") is not None)
 
 	# Keep nested SDO types reachable from DO references in used LNodeTypes.
@@ -175,7 +215,7 @@ def remove_unused_data_type_templates(root):
 		identifier = pending_do_types.pop()
 		for do_type in do_types_by_id.get(identifier, []):
 			for child in do_type:
-				if (child.tag.rsplit("}", 1)[-1] == "SDO" and
+				if (local_name(child) == "SDO" and
 					child.get("type") is not None and
 					child.get("type") not in used_do_types):
 					used_do_types.add(child.get("type"))
@@ -185,12 +225,12 @@ def remove_unused_data_type_templates(root):
 					 if definition.getparent() is not None]
 
 	structured_types = [definition for definition in definitions
-						if definition.tag.rsplit("}", 1)[-1] in ("DAType", "EnumType")]
+						if local_name(definition) in ("DAType", "EnumType")]
 	structured_types_by_id = definitions_by_id(structured_types)
 	used_structured_types = set()
 	for do_type in live_do_types:
 		for child in do_type:
-			if (child.tag.rsplit("}", 1)[-1] == "DA" and
+			if (local_name(child) == "DA" and
 				child.get("type") in structured_types_by_id):
 				used_structured_types.add(child.get("type"))
 
@@ -199,10 +239,10 @@ def remove_unused_data_type_templates(root):
 	while pending_structured_types:
 		identifier = pending_structured_types.pop()
 		for structured_type in structured_types_by_id.get(identifier, []):
-			if structured_type.tag.rsplit("}", 1)[-1] != "DAType":
+			if local_name(structured_type) != "DAType":
 				continue
 			for child in structured_type:
-				if (child.tag.rsplit("}", 1)[-1] == "BDA" and
+				if (local_name(child) == "BDA" and
 					child.get("type") in structured_types_by_id and
 					child.get("type") not in used_structured_types):
 					used_structured_types.add(child.get("type"))
@@ -231,9 +271,9 @@ def rename_data_type_template_id(root, rule):
 		return []
 
 	data_type_templates = [element for element in root.iter()
-						   if element.tag.rsplit("}", 1)[-1] == "DataTypeTemplates"]
+						   if local_name(element) == "DataTypeTemplates"]
 	definitions = [child for templates in data_type_templates for child in templates
-				if (child.tag.rsplit("}", 1)[-1] in selected_types and
+				if (local_name(child) in selected_types and
 					child.get("id") == search)]
 	if not definitions:
 		if rule.get("required", False):
@@ -241,12 +281,12 @@ def rename_data_type_template_id(root, rule):
 		return []
 
 	all_definitions = [child for templates in data_type_templates for child in templates
-				   if child.tag.rsplit("}", 1)[-1] in template_types]
+				   if local_name(child) in template_types]
 	if any(definition.get("id") == replacement and definition not in definitions
 		   for definition in all_definitions):
 		raise ValueError("data type template ID already exists: {}".format(replacement))
 
-	matched_types = {definition.tag.rsplit("}", 1)[-1]
+	matched_types = {local_name(definition)
 					 for definition in definitions}
 	patches = []
 	for definition in definitions:
@@ -254,22 +294,22 @@ def rename_data_type_template_id(root, rule):
 		definition.set("id", replacement)
 
 	for element in root.iter():
-		local_name = element.tag.rsplit("}", 1)[-1]
+		element_name = local_name(element)
 		parent = element.getparent()
-		parent_name = parent.tag.rsplit("}", 1)[-1] if parent is not None else ""
+		parent_name = local_name(parent) if parent is not None else ""
 		reference_attribute = None
-		if ("DOType" in matched_types and local_name == "DO" and
+		if ("DOType" in matched_types and element_name == "DO" and
 			parent_name == "LNodeType" and element.get("type") == search):
 			reference_attribute = "type"
-		elif ("DOType" in matched_types and local_name == "SDO" and
+		elif ("DOType" in matched_types and element_name == "SDO" and
 			  parent_name == "DOType" and element.get("type") == search):
 			reference_attribute = "type"
 		elif (matched_types.intersection({"DAType", "EnumType"}) and
-			  ((local_name == "DA" and parent_name == "DOType") or
-			   (local_name == "BDA" and parent_name == "DAType")) and
+			  ((element_name == "DA" and parent_name == "DOType") or
+			   (element_name == "BDA" and parent_name == "DAType")) and
 			  element.get("type") == search):
 			reference_attribute = "type"
-		elif ("LNodeType" in matched_types and local_name in ("LN", "LN0", "LNode")
+		elif ("LNodeType" in matched_types and element_name in ("LN", "LN0", "LNode")
 			  and element.get("lnType") == search):
 			reference_attribute = "lnType"
 		if reference_attribute:
@@ -315,7 +355,7 @@ def apply_rule(root, rule):
 		for element in matches:
 			ancestor = element.getparent()
 			while (ancestor is not None and
-				ancestor.tag.rsplit("}", 1)[-1] != ancestor_tag):
+				local_name(ancestor) != ancestor_tag):
 				ancestor = ancestor.getparent()
 			if ancestor is None:
 				continue
@@ -354,6 +394,15 @@ def rule_applies_to_file(rule, input_path):
 	return input_path.suffix.lower().lstrip(".") in allowed_extensions
 
 
+def hardcoded_patch_applies(hardcoded_patches, patch_name, input_path):
+	setting = hardcoded_patches.get(patch_name, True)
+	if isinstance(setting, bool):
+		return setting
+	if not setting.get("enabled", True):
+		return False
+	return rule_applies_to_file(setting, input_path)
+
+
 def load_rules(args):
 	rules = []
 	hardcoded_patches = {}
@@ -371,9 +420,22 @@ def load_rules(args):
 			if unknown_patches:
 				raise ValueError("unknown hardcoded patch: {}".format(
 					", ".join(sorted(unknown_patches))))
-			if any(not isinstance(enabled, bool)
-				   for enabled in hardcoded_patches.values()):
-				raise ValueError("hardcoded patch settings must be true or false")
+			for patch_name, setting in hardcoded_patches.items():
+				if isinstance(setting, bool):
+					continue
+				if not isinstance(setting, dict):
+					raise ValueError("hardcoded patch settings must be booleans or objects")
+				unknown_settings = set(setting) - {"enabled", "extensions"}
+				if unknown_settings:
+					raise ValueError("unknown settings for hardcoded patch {}: {}".format(
+						patch_name, ", ".join(sorted(unknown_settings))))
+				if not isinstance(setting.get("enabled", True), bool):
+					raise ValueError("hardcoded patch enabled setting must be true or false")
+				extensions = setting.get("extensions")
+				if (extensions is not None and
+					(not isinstance(extensions, list) or
+					 any(not isinstance(extension, str) for extension in extensions))):
+					raise ValueError("hardcoded patch extensions must be a list of strings")
 	rules.extend(json.loads(rule) for rule in args.rule)
 	return rules, hardcoded_patches
 
@@ -400,15 +462,19 @@ def write_patch_log(log_path, input_path, output_path, patches):
 def process_file(input_path, output_path, rules, hardcoded_patches):
 	tree = parse_xml(input_path)
 	patches = []
-	patch_enabled = lambda name: hardcoded_patches.get(name, True)
-	if (patch_enabled("remove-unused-data-type-templates") and
-		input_path.suffix.lower() in (".icd", ".iid")):
+	if hardcoded_patch_applies(
+		hardcoded_patches, "remove-unused-data-type-templates", input_path):
 		for path in remove_unused_data_type_templates(tree.getroot()):
 			patches.append("remove-unused-data-type-template: {}".format(path))
-	if patch_enabled("add-empty-lpl-das"):
+	if hardcoded_patch_applies(hardcoded_patches, "add-empty-lpl-das", input_path):
 		for path in add_empty_lpl_das(tree.getroot()):
 			patches.append("add-empty-lpl-das: {}".format(path))
-	if patch_enabled("expand-single-val-sgroups"):
+	if hardcoded_patch_applies(
+		hardcoded_patches, "add-enum-default-values", input_path):
+		for path in add_enum_default_values(tree.getroot()):
+			patches.append("add-enum-default-value: {}".format(path))
+	if hardcoded_patch_applies(
+		hardcoded_patches, "expand-single-val-sgroups", input_path):
 		for path in expand_single_val_sgroups(tree.getroot()):
 			patches.append("expand-single-val-sgroups: {}".format(path))
 	for rule in rules:
@@ -434,7 +500,8 @@ def process_file(input_path, output_path, rules, hardcoded_patches):
 			else:
 				patches.append("rule {} ({}): {}".format(
 					rule.get("action"), rule["xpath"], path))
-	if patch_enabled("truncate-desc-255"):
+	if hardcoded_patch_applies(
+		hardcoded_patches, "truncate-desc-255", input_path):
 		for path, original_length in truncate_desc_attributes(tree.getroot()):
 			patches.append("truncate-desc-255: {} ({} -> 255 characters)".format(
 				path, original_length))
