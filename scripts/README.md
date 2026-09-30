@@ -51,8 +51,9 @@ GitHub Actions performs the same build automatically when
 Applies the built-in SCL/SCD value-group expansion, adds the standard `DA`
 children to empty `DOType cdc="LPL"` elements, normalizes en dashes in `Val`
 text, removes unused data type templates from ICD/IID inputs, truncates long
-`desc` attributes, and applies optional XML rules to an input file. The result
-is written to a separate output file by default.
+`desc` attributes, adds missing enum `Val` defaults to `DA`/`BDA` elements in
+ICD/IID inputs, and applies optional XML rules to an input file. The result is
+written to a separate output file by default.
 
 The hardcoded PLES IOP transformations are documented in
 the [PLES IOP rules reference](PLESIOPRULES.md).
@@ -157,8 +158,15 @@ patches independently:
 ```json
 {
   "hardcodedPatches": {
-    "remove-unused-data-type-templates": true,
+    "remove-unused-data-type-templates": {
+      "enabled": true,
+      "extensions": ["icd", "iid"]
+    },
     "add-empty-lpl-das": true,
+    "add-enum-default-values": {
+      "enabled": true,
+      "extensions": ["icd", "iid"]
+    },
     "expand-single-val-sgroups": true,
     "truncate-desc-255": false
   },
@@ -166,10 +174,13 @@ patches independently:
 }
 ```
 
-Set a switch to `false` to disable that patch. Omitted switches default to
-`true`; the `rules` array contains the configurable XML rules. The
-`truncate-desc-255` patch shortens any `desc` attribute over 255 characters to
-its first 255 characters.
+Each hardcoded patch can be a boolean or an object with `enabled` and optional
+`extensions`. Set `enabled` to `false` to disable the patch. Omitted switches
+default to enabled. If `extensions` is omitted or empty, the patch applies to
+all input file types; otherwise, the list filters it by suffix, case-insensitively.
+The `rules` array contains the configurable XML rules. The `truncate-desc-255`
+patch shortens any `desc` attribute over 255 characters to its first 255
+characters.
 
 The rules handle the SCL default namespace and both `inst`/`lnInst` attribute
 spellings used by the source files. The ConnectedAP rule applies only to ICD

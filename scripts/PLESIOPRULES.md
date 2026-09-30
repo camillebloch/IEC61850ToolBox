@@ -248,13 +248,38 @@ longer than 255 characters, it keeps the first 255 characters and logs the
 element path and original length. Values of 255 characters or fewer are left
 unchanged. This patch runs after JSON rules.
 
+## Rule 9: Add Default Values for Enum Attributes
+
+**Patch name:** `add-enum-default-values`
+
+This hardcoded patch runs only for `.icd` and `.iid` inputs. It finds `DA` and
+`BDA` elements with `bType="Enum"` that do not have a direct `Val` child. The
+element's `type` attribute is matched exactly and case-sensitively against an
+`EnumType/@id`. If a matching `EnumType` has at least one `EnumVal`, a new
+namespace-matched `Val` is added containing the text of its first `EnumVal`.
+Elements that already contain a `Val`, reference no matching enum, or point to
+an enum with no values are left unchanged. Each added value is logged by its
+element path.
+
 ## Hardcoded Patch Switches
 
-Each hardcoded patch can be independently enabled or disabled in the top-level
-`hardcodedPatches` object in the JSON rule file. The available names are
-`remove-unused-data-type-templates`, `add-empty-lpl-das`,
-`expand-single-val-sgroups`, and `truncate-desc-255`. A value of `false`
-disables that patch; omitted switches default to `true` for compatibility.
+Each hardcoded patch can be independently enabled, disabled, and file-filtered
+in the top-level `hardcodedPatches` object in the JSON rule file. A patch value
+may be a boolean or an object with `enabled` and optional `extensions` fields.
+If `extensions` is omitted or empty, that patch has no file-type filter. The
+available names are `remove-unused-data-type-templates`, `add-empty-lpl-das`,
+`add-enum-default-values`, `expand-single-val-sgroups`, and
+`truncate-desc-255`. Omitted switches default to enabled.
+
+For example, the two ICD/IID-only patches are configured with an extension
+filter, while the other built-in patches run on any file type unless filtered:
+
+```json
+"remove-unused-data-type-templates": {
+  "enabled": true,
+  "extensions": ["icd", "iid"]
+}
+```
 
 ## Execution Order
 
@@ -262,11 +287,12 @@ For each input file, transformations run in this order:
 
 1. For ICD/IID inputs, remove unreachable data type templates.
 2. Add the four `DA` children to remaining empty `LPL` `DOType` elements.
-3. Expand eligible single-value `DA` setting groups.
-4. Apply rules supplied through `--rules` and repeated `--rule` options.
-5. Truncate `desc` attributes longer than 255 characters.
-6. Write the output file.
-7. Append the applied patch paths to `patch.log` after a successful write.
+3. For ICD/IID inputs, add missing enum `Val` defaults to `DA` and `BDA`.
+4. Expand eligible single-value `DA` setting groups.
+5. Apply rules supplied through `--rules` and repeated `--rule` options.
+6. Truncate `desc` attributes longer than 255 characters.
+7. Write the output file.
+8. Append the applied patch paths to `patch.log` after a successful write.
 
 ## Configurable Rules
 
