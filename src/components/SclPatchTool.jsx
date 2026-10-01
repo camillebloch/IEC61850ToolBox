@@ -56,7 +56,12 @@ function buildExportConfig(patchState) {
 
   const rules = patchState.rules
     .filter((rule) => rule.enabled !== false)
-    .map(({ enabled, key, ...rule }) => rule)
+    .map((rule) => {
+      const sanitizedRule = { ...rule }
+      delete sanitizedRule.enabled
+      delete sanitizedRule.key
+      return sanitizedRule
+    })
 
   return { hardcodedPatches, rules }
 }
@@ -188,7 +193,7 @@ export default function SclPatchTool() {
   const handleCopyCommand = async () => {
     try {
       await navigator.clipboard.writeText(commandPreview)
-    } catch (error) {
+    } catch {
       // Quiet fallback: the value is still visible in the UI.
     }
   }
