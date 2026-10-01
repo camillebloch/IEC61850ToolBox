@@ -74,7 +74,9 @@ export default function SclPatchTool() {
   const [ruleForm, setRuleForm] = useState(DEFAULT_RULE_FORM)
 
   useEffect(() => {
-    fetch('/ples-iop-rules.json')
+    const rulesUrl = `${import.meta.env.BASE_URL}ples-iop-rules.json`
+
+    fetch(rulesUrl)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Unable to load rules JSON (${response.status})`)
