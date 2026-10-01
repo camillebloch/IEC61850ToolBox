@@ -4,13 +4,19 @@ import { compareIED } from './lib/compareIED'
 import { searchDataInstancesByTypeId } from './lib/searchDataInstances'
 import FileUploadPanel from './components/FileUploadPanel'
 import ComparisonReport from './components/ComparisonReport'
+import SclPatchTool from './components/SclPatchTool'
 
 const TOOL_IDS = {
+  sclPatchRunner: 'scl-patch-runner',
   compatibilityChecker: 'compatibility-checker',
   dataInstanceSearch: 'data-instance-search',
 }
 
 const TOOLS = [
+  {
+    id: TOOL_IDS.sclPatchRunner,
+    label: 'SCL patch runner',
+  },
   {
     id: TOOL_IDS.compatibilityChecker,
     label: 'IED compatibility Checker',
@@ -25,7 +31,7 @@ const SCL_FILE_EXTENSIONS = '.icd,.iid,.isd,.cid,.ssd,.scd,.sed,.asd,.xml'
 const SCL_FILE_LABELS = ['ICD', 'IID', 'ISD', 'CID', 'SSD', 'SCD', 'SED', 'ASD']
 
 export default function App() {
-  const [activeTool, setActiveTool] = useState(TOOL_IDS.compatibilityChecker)
+  const [activeTool, setActiveTool] = useState(TOOL_IDS.sclPatchRunner)
   const [ssdData, setSsdData] = useState(null)
   const [icdData, setIcdData] = useState(null)
   const [report, setReport] = useState(null)
@@ -102,6 +108,8 @@ export default function App() {
       </header>
 
       <main className="px-8 py-6 space-y-6">
+        {activeTool === TOOL_IDS.sclPatchRunner && <SclPatchTool />}
+
         {activeTool === TOOL_IDS.compatibilityChecker && (
           <>
             {/* File loading panel for the IED compatibility checker. */}
