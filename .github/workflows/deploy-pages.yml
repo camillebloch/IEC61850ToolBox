@@ -36,6 +36,9 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Ensure rules file is published
+        run: cp public/ples-iop-rules.json dist/ples-iop-rules.json
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 

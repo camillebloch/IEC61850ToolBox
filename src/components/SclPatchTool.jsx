@@ -87,7 +87,7 @@ export default function SclPatchTool() {
         setPatchState(normalizeRulesData(data))
       })
       .catch((error) => {
-        setLoadingError(error.message)
+        setLoadingError(`${error.message}. The rules file must be published under the GitHub Pages base URL and the site may need a fresh deploy.`)
       })
   }, [])
 
