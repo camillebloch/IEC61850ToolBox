@@ -16,7 +16,12 @@
     "truncate-desc-255": {
       "enabled": false,
       "extensions": ["scd"]
-    }
+    },
+    "schneider-redundant-ethernet": {
+      "enabled": true,
+      "extensions": ["scd"]
+    },
+    "schneider-sv-cb-ref-normalization": true
   },
   "rules": [
     {

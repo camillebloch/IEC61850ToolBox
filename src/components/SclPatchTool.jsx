@@ -249,6 +249,12 @@ export default function SclPatchTool() {
     const outputNameCounts = new Map()
 
     try {
+      setRunStatus('Waking the backend service. Render may take up to a minute to resume after being idle…')
+      const healthResponse = await fetch(`${PATCH_API_URL}/health`, { cache: 'no-store' })
+      if (!healthResponse.ok) {
+        throw new Error(`The patch service health check failed (${healthResponse.status}).`)
+      }
+
       for (const [index, sourceFile] of sourceFiles.entries()) {
         setRunStatus(`Patching file ${index + 1} of ${sourceFiles.length}: ${sourceFile.name}`)
 
