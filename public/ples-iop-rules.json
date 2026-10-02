@@ -81,18 +81,6 @@
       "xpath": "//*[local-name()='DOI' and @name='Tms']/*[local-name()='SDI' and @name='units']/*[local-name()='DAI' and @name='SIUnit']/*[local-name()='Val']"
     },
     {
-      "action": "set-text",
-      "enabled": true,
-      "value": "RedundantEthernet",
-      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='DOI' and @name='IntrfNo']/*[local-name()='DAI' and @name='setVal']/*[local-name()='Val']"
-    },
-    {
-      "action": "set-text",
-      "enabled": true,
-      "value": "RedundantEthernet",
-      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='DOI' and @name='PTPSIntrfNo']/*[local-name()='DAI' and @name='setVal']/*[local-name()='Val']"
-    },
-    {
       "action": "replace-ancestor-attribute",
       "enabled": true,
       "extensions": ["icd", "iid"],
