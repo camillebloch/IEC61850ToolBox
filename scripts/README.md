@@ -146,10 +146,10 @@ python scripts/update-scl-for-ples.py input.scd --rules rules.json
 ```
 
 The current PLES IOP removal rules are available in
-[`ples-iop-rules.json`](ples-iop-rules.json):
+[`public/ples-iop-rules.json`](../public/ples-iop-rules.json):
 
 ```powershell
-python scripts/update-scl-for-ples.py input.scd --rules scripts/ples-iop-rules.json
+python scripts/update-scl-for-ples.py input.scd --rules public/ples-iop-rules.json
 ```
 
 The rule file has a top-level `hardcodedPatches` object to toggle built-in
@@ -182,6 +182,11 @@ The `rules` array contains the configurable XML rules. The `truncate-desc-255`
 patch shortens any `desc` attribute over 255 characters to its first 255
 characters.
 
+Each parameterized rule may include an `enabled` boolean. It defaults to
+`true`; setting it to `false` skips that rule while preserving it in the JSON
+configuration. Rules may also include an `extensions` list to limit where they
+run. An omitted or empty list applies the rule to every input extension.
+
 The rules handle the SCL default namespace and both `inst`/`lnInst` attribute
 spellings used by the source files. The ConnectedAP rule applies only to ICD
 files and removes matching `apName="AP1"` connections.
@@ -201,6 +206,9 @@ Values are case-insensitive and may include or omit the leading dot:
 
 Rules without `extensions` apply to every input file. A rule with
 `extensions: ["icd", "iid"]` is skipped for `.scd` files.
+
+In the web interface, use each rule's checkbox to toggle it, **Edit** to change
+its action parameters, and the **Extensions** field to edit its file-type list.
 
 Supported actions are `set-attribute`, `add-attribute`, `set-text`, `delete`,
 `replace`, `replace-ancestor-attribute`, and

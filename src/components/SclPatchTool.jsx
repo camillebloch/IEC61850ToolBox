@@ -55,10 +55,8 @@ function buildExportConfig(patchState) {
   )
 
   const rules = patchState.rules
-    .filter((rule) => rule.enabled !== false)
     .map((rule) => {
       const sanitizedRule = { ...rule }
-      delete sanitizedRule.enabled
       delete sanitizedRule.key
       return sanitizedRule
     })
@@ -70,11 +68,11 @@ const PATCH_API_URL = (import.meta.env.VITE_PATCH_API_URL || 'http://localhost:8
 
 export default function SclPatchTool() {
   const sourceInputRef = useRef(null)
-  const [sourceFile, setSourceFile] = useState(null)
+  const [sourceFiles, setSourceFiles] = useState([])
   const [patchState, setPatchState] = useState({ hardcodedPatches: {}, rules: [] })
   const [loadingError, setLoadingError] = useState('')
   const [runStatus, setRunStatus] = useState('')
-  const [pendingDownload, setPendingDownload] = useState(null)
+  const [editingRuleKey, setEditingRuleKey] = useState(null)
   const [ruleForm, setRuleForm] = useState(DEFAULT_RULE_FORM)
 
   useEffect(() => {
@@ -98,12 +96,14 @@ export default function SclPatchTool() {
   const exportedConfig = useMemo(() => buildExportConfig(patchState), [patchState])
 
   const commandPreview = useMemo(() => {
-    if (!sourceFile) {
+    if (sourceFiles.length === 0) {
       return 'Select an input SCL file to preview the CLI command.'
     }
 
-    return `python .\\scripts\\update-scl-for-ples.py "${sourceFile.name}" --rules ".\\scripts\\ples-iop-rules.json"`
-  }, [sourceFile])
+    return sourceFiles
+      .map((file) => `python .\\scripts\\update-scl-for-ples.py "${file.name}" --rules ".\\public\\ples-iop-rules.json"`)
+      .join('\n')
+  }, [sourceFiles])
 
   const handleToggleHardcodedPatch = (patchName) => {
     setPatchState((previous) => ({
@@ -118,11 +118,42 @@ export default function SclPatchTool() {
     }))
   }
 
+  const handleUpdateHardcodedExtensions = (patchName, value) => {
+    const extensions = value
+      .split(',')
+      .map((extension) => extension.trim().replace(/^\./, '').toLowerCase())
+      .filter(Boolean)
+
+    setPatchState((previous) => ({
+      ...previous,
+      hardcodedPatches: {
+        ...previous.hardcodedPatches,
+        [patchName]: {
+          ...previous.hardcodedPatches[patchName],
+          extensions,
+        },
+      },
+    }))
+  }
+
   const handleToggleRule = (ruleKey) => {
     setPatchState((previous) => ({
       ...previous,
       rules: previous.rules.map((rule) => (
         rule.key === ruleKey ? { ...rule, enabled: !rule.enabled } : rule
+      )),
+    }))
+  }
+
+  const handleUpdateRule = (ruleKey, field, value) => {
+    const updatedValue = field === 'extensions'
+      ? value.split(',').map((extension) => extension.trim().replace(/^\./, '')).filter(Boolean)
+      : value
+
+    setPatchState((previous) => ({
+      ...previous,
+      rules: previous.rules.map((rule) => (
+        rule.key === ruleKey ? { ...rule, [field]: updatedValue } : rule
       )),
     }))
   }
@@ -205,78 +236,71 @@ export default function SclPatchTool() {
   }
 
   const handleRunPatch = async () => {
-    if (!sourceFile) {
-      setRunStatus('Select an input SCL file before running the patch.')
+    if (sourceFiles.length === 0) {
+      setRunStatus('Select at least one input SCL file before running the patch.')
       return
     }
 
-    setRunStatus('Sending the selected SCL file to the patch service…')
+    if (typeof window.showDirectoryPicker !== 'function') {
+      setRunStatus('Folder saving requires a browser that supports folder access, such as desktop Chrome or Edge.')
+      return
+    }
 
     try {
-      const formData = new FormData()
-      formData.append('file', sourceFile)
-      formData.append('rules', JSON.stringify(exportedConfig))
+      const destinationDirectory = await window.showDirectoryPicker({ mode: 'readwrite' })
+      const outputNameCounts = new Map()
 
-      const response = await fetch(`${PATCH_API_URL}/patch`, {
-        method: 'POST',
-        body: formData,
-      })
+      for (const [index, sourceFile] of sourceFiles.entries()) {
+        setRunStatus(`Patching file ${index + 1} of ${sourceFiles.length}: ${sourceFile.name}`)
 
-      if (!response.ok) {
-        const details = await response.text()
-        throw new Error(details || 'Patch service returned an error')
-      }
+        const formData = new FormData()
+        formData.append('file', sourceFile)
+        formData.append('rules', JSON.stringify(exportedConfig))
 
-      const blob = await response.blob()
-      const extension = sourceFile.name.match(/\.[^.]+$/)?.[0] || '.xml'
-      setPendingDownload({
-        blob,
-        fileName: `${sourceFile.name.replace(/\.[^.]+$/, '')}_patched${extension}`,
-      })
-      setRunStatus('The patched SCL file is ready to save.')
-    } catch (error) {
-      setRunStatus(error instanceof Error ? error.message : 'Unable to reach the patch service.')
-    }
-  }
-
-  const handleSavePatchedFile = async () => {
-    if (!pendingDownload) {
-      return
-    }
-
-    if (typeof window.showSaveFilePicker === 'function') {
-      try {
-        const fileHandle = await window.showSaveFilePicker({
-          suggestedName: pendingDownload.fileName,
-          types: [{
-            description: 'SCL file',
-            accept: { 'application/xml': ['.icd', '.iid', '.scd', '.xml'] },
-          }],
+        const response = await fetch(`${PATCH_API_URL}/patch`, {
+          method: 'POST',
+          body: formData,
         })
-        const writable = await fileHandle.createWritable()
-        await writable.write(pendingDownload.blob)
-        await writable.close()
-        setPendingDownload(null)
-        setRunStatus('The patched SCL file was saved successfully.')
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          setRunStatus('Save canceled. The patched file is still ready to save.')
-          return
-        }
-        setRunStatus(error instanceof Error ? error.message : 'Unable to save the patched file.')
-      }
-      return
-    }
 
-    const downloadUrl = URL.createObjectURL(pendingDownload.blob)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = pendingDownload.fileName
-    link.click()
-    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
-    setPendingDownload(null)
-    setRunStatus('Your browser does not support choosing a save location. The file was sent to its download folder.')
+        if (!response.ok) {
+          const details = await response.text()
+          throw new Error(`${sourceFile.name}: ${details || 'Patch service returned an error'}`)
+        }
+
+        const extension = sourceFile.name.match(/\.[^.]+$/)?.[0] || '.xml'
+        const stem = sourceFile.name.replace(/\.[^.]+$/, '')
+        const baseName = `${stem}_patched${extension}`
+        const duplicateCount = outputNameCounts.get(baseName) ?? 0
+        outputNameCounts.set(baseName, duplicateCount + 1)
+        const outputName = duplicateCount === 0
+          ? baseName
+          : `${stem}_patched_${duplicateCount + 1}${extension}`
+        const outputHandle = await destinationDirectory.getFileHandle(outputName, { create: true })
+        const writable = await outputHandle.createWritable()
+        await writable.write(await response.blob())
+        await writable.close()
+      }
+
+      setRunStatus(`${sourceFiles.length} patched file(s) saved in the selected folder.`)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setRunStatus('Folder selection canceled.')
+      } else {
+        setRunStatus(error instanceof Error ? error.message : 'Unable to patch the selected files.')
+      }
+    }
   }
+
+  const renderRuleTextField = (rule, field, label, wide = false) => (
+    <label className={`${wide ? 'md:col-span-2 ' : ''}text-xs uppercase tracking-widest text-slate-500`}>
+      {label}
+      <input
+        value={rule[field] ?? ''}
+        onChange={(event) => handleUpdateRule(rule.key, field, event.target.value)}
+        className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
+      />
+    </label>
+  )
 
   return (
     <section className="border border-slate-700 bg-slate-900 p-6">
@@ -291,35 +315,41 @@ export default function SclPatchTool() {
           <input
             ref={sourceInputRef}
             type="file"
+            multiple
             accept=".icd,.iid,.scd,.xml"
             className="hidden"
             onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) {
-                setSourceFile(file)
+              const files = Array.from(event.target.files ?? [])
+              if (files.length > 0) {
+                setSourceFiles(files)
                 setRunStatus('')
               }
+              event.target.value = ''
             }}
           />
 
           <button
             type="button"
             className={`border p-4 text-left transition-colors flex-1 ${
-              sourceFile
+              sourceFiles.length > 0
                 ? 'border-cyan-600 bg-cyan-950/20'
                 : 'border-slate-700 bg-slate-950/40 hover:border-slate-500'
             }`}
             onClick={() => sourceInputRef.current?.click()}
           >
             <div className="flex items-start justify-between mb-2">
-              <span className="text-xs text-slate-500 uppercase tracking-widest">SCL input file</span>
-              {sourceFile && <span className="text-xs text-cyan-400">✓ selected</span>}
+              <span className="text-xs text-slate-500 uppercase tracking-widest">SCL input files</span>
+              {sourceFiles.length > 0 && <span className="text-xs text-cyan-400">{sourceFiles.length} selected</span>}
             </div>
             <p className="text-2xl font-bold text-slate-200">ICD / IID / SCD</p>
-            {sourceFile ? (
-              <p className="text-xs text-cyan-400 mt-1 truncate">{sourceFile.name}</p>
+            {sourceFiles.length > 0 ? (
+              <div className="mt-2 max-h-20 overflow-y-auto">
+                {sourceFiles.map((file, index) => (
+                  <p key={`${file.name}-${file.lastModified}-${index}`} className="text-xs text-cyan-400 truncate">{file.name}</p>
+                ))}
+              </div>
             ) : (
-              <p className="text-xs text-slate-600 mt-1">Click to select an SCL file</p>
+              <p className="text-xs text-slate-600 mt-1">Click to select one or more SCL files</p>
             )}
           </button>
 
@@ -327,7 +357,7 @@ export default function SclPatchTool() {
             type="button"
             className="border border-cyan-500 bg-cyan-500 px-5 py-4 text-sm font-bold uppercase tracking-widest text-slate-950 transition-colors hover:bg-cyan-300 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
             onClick={handleRunPatch}
-            disabled={!sourceFile}
+            disabled={sourceFiles.length === 0}
           >
             Run patch
           </button>
@@ -352,15 +382,6 @@ export default function SclPatchTool() {
       {runStatus && (
         <div className="mb-6 border border-cyan-700 bg-cyan-950/20 px-4 py-3 text-sm text-cyan-300">
           {runStatus}
-          {pendingDownload && (
-            <button
-              type="button"
-              className="mt-3 block border border-cyan-500 bg-cyan-500 px-4 py-2 font-bold uppercase tracking-widest text-slate-950 hover:bg-cyan-300"
-              onClick={handleSavePatchedFile}
-            >
-              Choose save location
-            </button>
-          )}
         </div>
       )}
 
@@ -372,12 +393,20 @@ export default function SclPatchTool() {
               <p className="text-sm text-slate-500">Loading patch definitions…</p>
             ) : (
               Object.entries(patchState.hardcodedPatches).map(([patchName, setting]) => (
-                <label key={patchName} className="flex items-center justify-between gap-3 border border-slate-700 bg-slate-900/80 px-3 py-2">
-                  <div>
+                <div key={patchName} className="flex items-start justify-between gap-3 border border-slate-700 bg-slate-900/80 px-3 py-2">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-slate-100">{patchName}</p>
-                    {setting.extensions?.length > 0 && (
-                      <p className="text-[11px] text-slate-400">Extensions: {setting.extensions.join(', ')}</p>
-                    )}
+                    <label className="mt-2 block text-[11px] uppercase tracking-widest text-slate-500">
+                      Extensions
+                      <input
+                        type="text"
+                        value={setting.extensions.join(', ')}
+                        onChange={(event) => handleUpdateHardcodedExtensions(patchName, event.target.value)}
+                        placeholder="All file types"
+                        aria-label={`${patchName} extensions`}
+                        className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-xs px-2 py-1"
+                      />
+                    </label>
                   </div>
                   <input
                     type="checkbox"
@@ -385,7 +414,7 @@ export default function SclPatchTool() {
                     onChange={() => handleToggleHardcodedPatch(patchName)}
                     className="h-4 w-4 accent-cyan-500"
                   />
-                </label>
+                </div>
               ))
             )}
           </div>
@@ -402,15 +431,23 @@ export default function SclPatchTool() {
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="min-w-0">
                       <p className="text-xs uppercase tracking-widest text-slate-500">{rule.action}</p>
-                      <p className="text-sm text-slate-200 break-all">{rule.xpath}</p>
+                      {rule.xpath && <p className="text-sm text-slate-200 break-all">{rule.xpath}</p>}
                     </div>
                     <div className="flex items-center gap-2">
                       <input
+                        aria-label={`Enable ${rule.action} rule`}
                         type="checkbox"
                         checked={rule.enabled !== false}
                         onChange={() => handleToggleRule(rule.key)}
                         className="h-4 w-4 accent-cyan-500"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setEditingRuleKey((currentKey) => currentKey === rule.key ? null : rule.key)}
+                        className="text-xs uppercase tracking-widest text-cyan-300 hover:text-cyan-100"
+                      >
+                        {editingRuleKey === rule.key ? 'Done' : 'Edit'}
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleRemoveRule(rule.key)}
@@ -424,6 +461,79 @@ export default function SclPatchTool() {
                   {rule.replace && <p className="text-xs text-slate-400">Replace: {rule.replace}</p>}
                   {rule.extensions?.length > 0 && (
                     <p className="text-xs text-slate-400">Extensions: {rule.extensions.join(', ')}</p>
+                  )}
+                  {editingRuleKey === rule.key && (
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-slate-700 pt-3">
+                      <label className="text-xs uppercase tracking-widest text-slate-500">
+                        Action
+                        <select
+                          value={rule.action}
+                          onChange={(event) => handleUpdateRule(rule.key, 'action', event.target.value)}
+                          className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
+                        >
+                          <option value="delete">delete</option>
+                          <option value="replace">replace</option>
+                          <option value="replace-ancestor-attribute">replace-ancestor-attribute</option>
+                          <option value="set-text">set-text</option>
+                          <option value="set-attribute">set-attribute</option>
+                          <option value="add-attribute">add-attribute</option>
+                          <option value="rename-data-type-template-id">rename-data-type-template-id</option>
+                        </select>
+                      </label>
+                      <label className="text-xs uppercase tracking-widest text-slate-500">
+                        Extensions
+                        <input
+                          value={(rule.extensions ?? []).join(', ')}
+                          onChange={(event) => handleUpdateRule(rule.key, 'extensions', event.target.value)}
+                          className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
+                          placeholder="icd, iid, scd"
+                        />
+                      </label>
+
+                      {rule.action !== 'rename-data-type-template-id' && renderRuleTextField(rule, 'xpath', 'XPath', true)}
+
+                      {rule.action === 'replace' && (
+                        <>
+                          <label className="text-xs uppercase tracking-widest text-slate-500">
+                            Target
+                            <select
+                              value={rule.target ?? 'text'}
+                              onChange={(event) => handleUpdateRule(rule.key, 'target', event.target.value)}
+                              className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
+                            >
+                              <option value="text">text</option>
+                              <option value="attribute">attribute</option>
+                            </select>
+                          </label>
+                          {rule.target === 'attribute' && renderRuleTextField(rule, 'attribute', 'Attribute name')}
+                          {renderRuleTextField(rule, 'search', 'Search')}
+                          {renderRuleTextField(rule, 'replace', 'Replace')}
+                        </>
+                      )}
+
+                      {rule.action === 'replace-ancestor-attribute' && (
+                        <>
+                          {renderRuleTextField(rule, 'ancestor', 'Ancestor tag')}
+                          {renderRuleTextField(rule, 'attribute', 'Attribute name')}
+                          {renderRuleTextField(rule, 'replace', 'Replace')}
+                        </>
+                      )}
+
+                      {rule.action === 'rename-data-type-template-id' && (
+                        <>
+                          {renderRuleTextField(rule, 'search', 'Search')}
+                          {renderRuleTextField(rule, 'replace', 'Replace')}
+                        </>
+                      )}
+
+                      {(rule.action === 'set-text' || rule.action === 'set-attribute' || rule.action === 'add-attribute') && (
+                        <>
+                          {renderRuleTextField(rule, 'value', 'Value')}
+                          {(rule.action === 'set-attribute' || rule.action === 'add-attribute') &&
+                            renderRuleTextField(rule, 'name', 'Attribute name')}
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               ))
@@ -444,6 +554,7 @@ export default function SclPatchTool() {
             >
               <option value="delete">delete</option>
               <option value="replace">replace</option>
+              <option value="replace-ancestor-attribute">replace-ancestor-attribute</option>
               <option value="set-text">set-text</option>
               <option value="set-attribute">set-attribute</option>
               <option value="add-attribute">add-attribute</option>

@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'scripts/update-scl-for-ples.py'
-      - 'scripts/ples-iop-rules.json'
+      - 'public/ples-iop-rules.json'
       - '.github/workflows/build-scl-tool.yml'
   workflow_dispatch:
 
@@ -37,7 +37,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force release | Out-Null
           Copy-Item dist\update-scl-for-ples.exe release\
-          Copy-Item scripts\ples-iop-rules.json release\
+          Copy-Item public\ples-iop-rules.json release\
 
       - name: Upload executable and rules artifact
         uses: actions/upload-artifact@v4

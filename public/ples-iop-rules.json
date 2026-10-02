@@ -4,32 +4,42 @@
       "enabled": true,
       "extensions": ["icd", "iid"]
     },
-    "add-empty-lpl-das": true,
+    "add-empty-lpl-das": {
+      "enabled": false,
+      "extensions": ["scd"]
+    },
     "add-enum-default-values": {
-      "enabled": true,
+      "enabled": false,
       "extensions": ["icd", "iid"]
     },
     "expand-single-val-sgroups": true,
-    "truncate-desc-255": true
+    "truncate-desc-255": {
+      "enabled": false,
+      "extensions": ["scd"]
+    }
   },
   "rules": [
     {
       "action": "delete",
+      "enabled": true,
       "extensions": ["icd", "iid"],
-      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='TCR' and (@lnClass='GLOC' or @lnClass='GLOG') and (@lnInst='1' or @inst='1')]"
+      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='TCR' and @lnClass='GLOG' and @inst='1']"
     },
     {
       "action": "delete",
+      "enabled": true,
       "extensions": ["icd", "iid"],
-      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='T103' and @lnClass='ITCI' and (@lnInst='1' or @inst='1')]"
+      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='T103' and @lnClass='ITCI' and @inst='1']"
     },
     {
       "action": "delete",
+      "enabled": true,
       "extensions": ["icd"],
       "xpath": "//*[local-name()='ConnectedAP' and @apName='AP1' and @iedName = //*[local-name()='IED' and @type='PowerLogic-P7']/@name]"
     },
     {
       "action": "replace",
+      "enabled": true,
       "extensions": ["icd", "iid"],
       "target": "text",
       "search": "–",
@@ -38,6 +48,7 @@
     },
     {
       "action": "replace",
+      "enabled": true,
       "extensions": ["icd", "iid"],
       "target": "text",
       "search": "φ",
@@ -46,6 +57,7 @@
     },
     {
       "action": "replace",
+      "enabled": true,
       "extensions": ["icd", "iid"],
       "target": "text",
       "search": "µ",
@@ -54,6 +66,7 @@
     },
     {
       "action": "replace",
+      "enabled": true,
       "extensions": ["icd", "iid"],
       "target": "text",
       "search": ">616<",
@@ -62,12 +75,26 @@
     },
     {
       "action": "set-text",
+      "enabled": true,
       "extensions": ["icd", "iid"],
       "value": "s",
       "xpath": "//*[local-name()='DOI' and @name='Tms']/*[local-name()='SDI' and @name='units']/*[local-name()='DAI' and @name='SIUnit']/*[local-name()='Val']"
     },
     {
+      "action": "set-text",
+      "enabled": true,
+      "value": "RedundantEthernet",
+      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='DOI' and @name='IntrfNo']/*[local-name()='DAI' and @name='setVal']/*[local-name()='Val']"
+    },
+    {
+      "action": "set-text",
+      "enabled": true,
+      "value": "RedundantEthernet",
+      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='DOI' and @name='PTPSIntrfNo']/*[local-name()='DAI' and @name='setVal']/*[local-name()='Val']"
+    },
+    {
       "action": "replace-ancestor-attribute",
+      "enabled": true,
       "extensions": ["icd", "iid"],
       "ancestor": "IED",
       "attribute": "name",
@@ -76,12 +103,14 @@
     },
     {
       "action": "rename-data-type-template-id",
+      "enabled": false,
       "extensions": ["scd"],
       "search": "ENS_BEH",
       "replace": "ENS_BEH_P7"
     },
     {
       "action": "rename-data-type-template-id",
+      "enabled": false,
       "extensions": ["scd"],
       "search": "ENS_HEALTH",
       "replace": "ENS_HEALTH_P7"

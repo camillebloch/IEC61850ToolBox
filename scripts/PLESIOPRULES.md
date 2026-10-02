@@ -98,7 +98,7 @@ for each generated `DA`.
 
 **JSON action:** `replace`
 
-**Rule file:** `ples-iop-rules.json`
+**Rule file:** `public/ples-iop-rules.json`
 
 The JSON rules search every `Val` element in the SCL document with `target` set
 to `text`. Each occurrence of the configured `search` string is replaced by
@@ -311,7 +311,7 @@ The current JSON file also includes the `set-text` rule that normalizes
 `DOI(name="Tms")/SDI(name="units")/DAI(name="SIUnits")/Val` to `s`.
 
 The current PLES IOP removal rules are in
-[`ples-iop-rules.json`](ples-iop-rules.json). They remove these logical nodes:
+[`public/ples-iop-rules.json`](../public/ples-iop-rules.json). They remove these logical nodes:
 
 | IED `type` | `prefix` | `lnClass` | `lnInst` |
 | --- | --- | --- | --- |
@@ -335,7 +335,7 @@ standard SCL `inst` attribute. For the TCR node they accept both the requested
 Apply the file with:
 
 ```powershell
-python scripts/update-scl-for-ples.py input.scd --rules scripts/ples-iop-rules.json
+python scripts/update-scl-for-ples.py input.scd --rules public/ples-iop-rules.json
 ```
 
 The rule evaluator supports standard XPath element names such as `//IED` and
