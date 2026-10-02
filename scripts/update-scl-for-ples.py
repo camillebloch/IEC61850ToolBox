@@ -28,6 +28,8 @@ HARDCODED_PATCH_NAMES = {
 	"add-enum-default-values",
 	"expand-single-val-sgroups",
 	"truncate-desc-255",
+	"schneider-redundant-ethernet",
+	"schneider-sv-cb-ref-normalization",
 }
 
 
@@ -161,6 +163,66 @@ def truncate_desc_attributes(root, max_length=255):
 		if description is not None and len(description) > max_length:
 			element.set("desc", description[:max_length])
 			patched_paths.append((element_path(root, element), len(description)))
+	return patched_paths
+
+
+def set_schneider_redundant_ethernet_values(root):
+	"""Fill missing Schneider SCD interface-number values with RedundantEthernet."""
+	patched_paths = []
+	for ied in root.iter():
+		if (local_name(ied) != "IED" or
+			ied.get("manufacturer") != "Schneider-Electric"):
+			continue
+
+		for doi in ied.iter():
+			if (local_name(doi) != "DOI" or
+				doi.get("name") not in ("IntrfNo", "PTPSIntrfNo")):
+				continue
+
+			for dai in doi:
+				if local_name(dai) != "DAI" or dai.get("name") != "setVal":
+					continue
+				value_elements = [child for child in dai
+							  if local_name(child) == "Val"]
+				if not value_elements:
+					namespace = ET.QName(dai).namespace
+					value_tag = "{{{}}}Val".format(namespace) if namespace else "Val"
+					value_elements.append(ET.SubElement(dai, value_tag))
+
+				for value_element in value_elements:
+					if not (value_element.text or "").strip():
+						value_element.text = "RedundantEthernet"
+						patched_paths.append(element_path(root, value_element))
+	return patched_paths
+
+
+def normalize_schneider_sv_cb_refs(root):
+	"""Normalize Schneider LSVS/LGOS SvCBRef values to reference LLN0."""
+	patched_paths = []
+	for ied in root.iter():
+		if (local_name(ied) != "IED" or
+			ied.get("manufacturer") != "Schneider-Electric"):
+			continue
+
+		for logical_node in ied.iter():
+			if (local_name(logical_node) != "LN" or
+				logical_node.get("lnClass") not in ("LSVS", "LGOS")):
+				continue
+
+			for doi in logical_node.iter():
+				if local_name(doi) != "DOI" or doi.get("name") != "SvCBRef":
+					continue
+
+				for dai in doi:
+					if local_name(dai) != "DAI" or dai.get("name") != "setSrcRef":
+						continue
+					for value_element in dai:
+						if local_name(value_element) != "Val" or not value_element.text:
+							continue
+						replacement = value_element.text.replace("/.", "/LLN0.")
+						if replacement != value_element.text:
+							value_element.text = replacement
+							patched_paths.append(element_path(root, value_element))
 	return patched_paths
 
 
@@ -487,6 +549,14 @@ def process_file(input_path, output_path, rules, hardcoded_patches):
 		hardcoded_patches, "expand-single-val-sgroups", input_path):
 		for path in expand_single_val_sgroups(tree.getroot()):
 			patches.append("expand-single-val-sgroups: {}".format(path))
+	if hardcoded_patch_applies(
+		hardcoded_patches, "schneider-redundant-ethernet", input_path):
+		for path in set_schneider_redundant_ethernet_values(tree.getroot()):
+			patches.append("schneider-redundant-ethernet: {}".format(path))
+	if hardcoded_patch_applies(
+		hardcoded_patches, "schneider-sv-cb-ref-normalization", input_path):
+		for path in normalize_schneider_sv_cb_refs(tree.getroot()):
+			patches.append("schneider-sv-cb-ref-normalization: {}".format(path))
 	for rule in rules:
 		if not rule.get("enabled", True) or not rule_applies_to_file(rule, input_path):
 			continue
