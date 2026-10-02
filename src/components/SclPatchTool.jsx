@@ -66,11 +66,14 @@ function buildExportConfig(patchState) {
   return { hardcodedPatches, rules }
 }
 
+const PATCH_API_URL = import.meta.env.VITE_PATCH_API_URL || 'http://localhost:8000'
+
 export default function SclPatchTool() {
   const sourceInputRef = useRef(null)
   const [sourceFile, setSourceFile] = useState(null)
   const [patchState, setPatchState] = useState({ hardcodedPatches: {}, rules: [] })
   const [loadingError, setLoadingError] = useState('')
+  const [runStatus, setRunStatus] = useState('')
   const [ruleForm, setRuleForm] = useState(DEFAULT_RULE_FORM)
 
   useEffect(() => {
@@ -200,6 +203,42 @@ export default function SclPatchTool() {
     }
   }
 
+  const handleRunPatch = async () => {
+    if (!sourceFile) {
+      setRunStatus('Select an input SCL file before running the patch.')
+      return
+    }
+
+    setRunStatus('Sending the selected SCL file to the patch service…')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', sourceFile)
+      formData.append('rules', JSON.stringify(exportedConfig))
+
+      const response = await fetch(`${PATCH_API_URL}/patch`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const details = await response.text()
+        throw new Error(details || 'Patch service returned an error')
+      }
+
+      const blob = await response.blob()
+      const downloadUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = sourceFile.name.replace(/\.[^.]+$/, '') + '_patched.xml'
+      link.click()
+      URL.revokeObjectURL(downloadUrl)
+      setRunStatus('The patched SCL file has been downloaded successfully.')
+    } catch (error) {
+      setRunStatus(error instanceof Error ? error.message : 'Unable to reach the patch service.')
+    }
+  }
+
   return (
     <section className="border border-slate-700 bg-slate-900 p-6">
       <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">Tool panel</p>
@@ -208,40 +247,52 @@ export default function SclPatchTool() {
         Select an ICD, IID, or SCD file and tune the JSON-driven PLES patch set before generating the Python call.
       </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <input
-          ref={sourceInputRef}
-          type="file"
-          accept=".icd,.iid,.scd,.xml"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            if (file) {
-              setSourceFile(file)
-            }
-          }}
-        />
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_240px] gap-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <input
+            ref={sourceInputRef}
+            type="file"
+            accept=".icd,.iid,.scd,.xml"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) {
+                setSourceFile(file)
+                setRunStatus('')
+              }
+            }}
+          />
 
-        <button
-          type="button"
-          className={`border p-4 text-left transition-colors ${
-            sourceFile
-              ? 'border-cyan-600 bg-cyan-950/20'
-              : 'border-slate-700 bg-slate-950/40 hover:border-slate-500'
-          }`}
-          onClick={() => sourceInputRef.current?.click()}
-        >
-          <div className="flex items-start justify-between mb-2">
-            <span className="text-xs text-slate-500 uppercase tracking-widest">SCL input file</span>
-            {sourceFile && <span className="text-xs text-cyan-400">✓ selected</span>}
-          </div>
-          <p className="text-2xl font-bold text-slate-200">ICD / IID / SCD</p>
-          {sourceFile ? (
-            <p className="text-xs text-cyan-400 mt-1 truncate">{sourceFile.name}</p>
-          ) : (
-            <p className="text-xs text-slate-600 mt-1">Click to select an SCL file</p>
-          )}
-        </button>
+          <button
+            type="button"
+            className={`border p-4 text-left transition-colors flex-1 ${
+              sourceFile
+                ? 'border-cyan-600 bg-cyan-950/20'
+                : 'border-slate-700 bg-slate-950/40 hover:border-slate-500'
+            }`}
+            onClick={() => sourceInputRef.current?.click()}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <span className="text-xs text-slate-500 uppercase tracking-widest">SCL input file</span>
+              {sourceFile && <span className="text-xs text-cyan-400">✓ selected</span>}
+            </div>
+            <p className="text-2xl font-bold text-slate-200">ICD / IID / SCD</p>
+            {sourceFile ? (
+              <p className="text-xs text-cyan-400 mt-1 truncate">{sourceFile.name}</p>
+            ) : (
+              <p className="text-xs text-slate-600 mt-1">Click to select an SCL file</p>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className="border border-cyan-500 bg-cyan-500 px-5 py-4 text-sm font-bold uppercase tracking-widest text-slate-950 transition-colors hover:bg-cyan-300 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
+            onClick={handleRunPatch}
+            disabled={!sourceFile}
+          >
+            Run patch
+          </button>
+        </div>
 
         <div className="border border-slate-700 bg-slate-950/40 p-4 flex flex-col justify-between gap-3">
           <span className="text-xs text-slate-500 uppercase tracking-widest">Patch selection summary</span>
@@ -258,6 +309,12 @@ export default function SclPatchTool() {
           </button>
         </div>
       </div>
+
+      {runStatus && (
+        <div className="mb-6 border border-cyan-700 bg-cyan-950/20 px-4 py-3 text-sm text-cyan-300">
+          {runStatus}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
         <div className="border border-slate-700 bg-slate-950/60 p-4">

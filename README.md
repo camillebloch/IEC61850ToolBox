@@ -11,6 +11,19 @@ npm run dev
 
 Then open the local URL displayed by Vite in your browser.
 
+For the SCL patch runner, configure the backend endpoint in a local `.env` file:
+
+```bash
+```
+
+Then set:
+
+```bash
+VITE_PATCH_API_URL=http://localhost:8000
+```
+
+A Render-hosted backend can also be used instead of the local Python service.
+
 ## Deployment
 
 The application is deployed to GitHub Pages by the

@@ -1,0 +1,58 @@
+# Patch backend service
+
+This backend runs the SCL patch script used by the web UI.
+
+## Local development
+
+```bash
+cd api
+python -m pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The local API is then available at:
+
+```text
+http://localhost:8000/health
+```
+
+## Render deployment
+
+1. Create a new Web Service on Render and connect the GitHub repository.
+2. Use the repository root or the `api` folder as the service root depending on the service settings.
+3. Set the build command to:
+
+```bash
+pip install -r api/requirements.txt
+```
+
+4. Set the start command to:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 10000
+```
+
+If the service root is `api`, use:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 10000
+```
+
+5. Copy the public Render URL and set it in the frontend environment variable:
+
+```bash
+VITE_PATCH_API_URL=https://your-render-service.onrender.com
+```
+
+## Endpoint
+
+### `POST /patch`
+
+Upload an SCL file and the active JSON rules payload.
+
+Form fields:
+
+- `file`: the SCL file to patch
+- `rules`: JSON string containing the active `hardcodedPatches` and `rules`
+
+The service runs the Python script in the repository root and returns the patched XML file as the response body.
