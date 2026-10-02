@@ -19,23 +19,24 @@ http://localhost:8000/health
 ## Render deployment
 
 1. Create a new Web Service on Render and connect the GitHub repository.
-2. Use the repository root or the `api` folder as the service root depending on the service settings.
+2. Set the service root to `api`.
 3. Set the build command to:
 
 ```bash
-pip install -r api/requirements.txt
+pip install -r requirements.txt
 ```
 
 4. Set the start command to:
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 10000
+python -m uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
-If the service root is `api`, use:
+If you keep the repository root as the service root instead, use these commands:
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 10000
+pip install -r api/requirements.txt
+python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT
 ```
 
 5. Copy the public Render URL and set it in the frontend environment variable:

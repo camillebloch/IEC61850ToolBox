@@ -38,7 +38,7 @@ The backend is implemented under `api/main.py` and can be started with:
 ```bash
 cd api
 python -m pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Render deployment guidance
@@ -46,18 +46,19 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 Render is the recommended free/low-cost hosting option for the Python backend when the page is served from GitHub Pages.
 
 1. Create a Render Web Service connected to the GitHub repository.
-2. Use the `api/` folder as the service root or point the build command to that folder.
-3. Set the start command to:
+2. Set the service root to `api`.
+3. Set the build command to `pip install -r requirements.txt`.
+4. Set the start command to:
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 10000
+python -m uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
-4. Add the following repository secrets to GitHub Actions if you enable the Render deploy workflow:
+5. Add the following repository secrets to GitHub Actions if you enable the Render deploy workflow:
    - `RENDER_SERVICE_ID`
    - `RENDER_API_KEY`
 
-5. Set the frontend environment variable to the public Render URL when deploying the web UI:
+6. Set the frontend environment variable to the public Render URL when deploying the web UI:
 
 ```bash
 VITE_PATCH_API_URL=https://your-render-service.onrender.com

@@ -66,7 +66,7 @@ function buildExportConfig(patchState) {
   return { hardcodedPatches, rules }
 }
 
-const PATCH_API_URL = import.meta.env.VITE_PATCH_API_URL || 'http://localhost:8000'
+const PATCH_API_URL = (import.meta.env.VITE_PATCH_API_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 export default function SclPatchTool() {
   const sourceInputRef = useRef(null)
@@ -74,6 +74,7 @@ export default function SclPatchTool() {
   const [patchState, setPatchState] = useState({ hardcodedPatches: {}, rules: [] })
   const [loadingError, setLoadingError] = useState('')
   const [runStatus, setRunStatus] = useState('')
+  const [pendingDownload, setPendingDownload] = useState(null)
   const [ruleForm, setRuleForm] = useState(DEFAULT_RULE_FORM)
 
   useEffect(() => {
@@ -227,16 +228,54 @@ export default function SclPatchTool() {
       }
 
       const blob = await response.blob()
-      const downloadUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = downloadUrl
-      link.download = sourceFile.name.replace(/\.[^.]+$/, '') + '_patched.xml'
-      link.click()
-      URL.revokeObjectURL(downloadUrl)
-      setRunStatus('The patched SCL file has been downloaded successfully.')
+      const extension = sourceFile.name.match(/\.[^.]+$/)?.[0] || '.xml'
+      setPendingDownload({
+        blob,
+        fileName: `${sourceFile.name.replace(/\.[^.]+$/, '')}_patched${extension}`,
+      })
+      setRunStatus('The patched SCL file is ready to save.')
     } catch (error) {
       setRunStatus(error instanceof Error ? error.message : 'Unable to reach the patch service.')
     }
+  }
+
+  const handleSavePatchedFile = async () => {
+    if (!pendingDownload) {
+      return
+    }
+
+    if (typeof window.showSaveFilePicker === 'function') {
+      try {
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: pendingDownload.fileName,
+          types: [{
+            description: 'SCL file',
+            accept: { 'application/xml': ['.icd', '.iid', '.scd', '.xml'] },
+          }],
+        })
+        const writable = await fileHandle.createWritable()
+        await writable.write(pendingDownload.blob)
+        await writable.close()
+        setPendingDownload(null)
+        setRunStatus('The patched SCL file was saved successfully.')
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          setRunStatus('Save canceled. The patched file is still ready to save.')
+          return
+        }
+        setRunStatus(error instanceof Error ? error.message : 'Unable to save the patched file.')
+      }
+      return
+    }
+
+    const downloadUrl = URL.createObjectURL(pendingDownload.blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = pendingDownload.fileName
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+    setPendingDownload(null)
+    setRunStatus('Your browser does not support choosing a save location. The file was sent to its download folder.')
   }
 
   return (
@@ -313,6 +352,15 @@ export default function SclPatchTool() {
       {runStatus && (
         <div className="mb-6 border border-cyan-700 bg-cyan-950/20 px-4 py-3 text-sm text-cyan-300">
           {runStatus}
+          {pendingDownload && (
+            <button
+              type="button"
+              className="mt-3 block border border-cyan-500 bg-cyan-500 px-4 py-2 font-bold uppercase tracking-widest text-slate-950 hover:bg-cyan-300"
+              onClick={handleSavePatchedFile}
+            >
+              Choose save location
+            </button>
+          )}
         </div>
       )}
 
