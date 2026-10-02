@@ -11,6 +11,22 @@ npm run dev
 
 Then open the local URL displayed by Vite in your browser.
 
+For the SCL patch runner, configure the backend endpoint in a local `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Then set:
+
+```bash
+VITE_PATCH_API_URL=http://localhost:8000
+```
+
+A Render-hosted backend can also be used instead of the local Python service.
+
+The backend deployment workflow is defined in [.github/workflows/deploy-render-backend.yml](.github/workflows/deploy-render-backend.yml). It triggers a Render deploy using the `RENDER_SERVICE_ID` and `RENDER_API_KEY` repository secrets.
+
 ## Deployment
 
 The application is deployed to GitHub Pages by the
@@ -18,6 +34,8 @@ The application is deployed to GitHub Pages by the
 changes are pushed to `main`. It is available at:
 
 https://milka34Fr.github.io/IEC61850ToolBox/
+
+The frontend is configured to call the Python patch backend via the GitHub Actions secret `VITE_PATCH_API_URL`. Set this repository secret to the public Render URL before deploying the Pages app so the browser points to the correct backend service.
 
 The workflow can also be started manually from the GitHub Actions tab.
 

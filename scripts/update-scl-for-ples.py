@@ -437,6 +437,16 @@ def load_rules(args):
 					 any(not isinstance(extension, str) for extension in extensions))):
 					raise ValueError("hardcoded patch extensions must be a list of strings")
 	rules.extend(json.loads(rule) for rule in args.rule)
+	for rule in rules:
+		if not isinstance(rule, dict):
+			raise ValueError("each rule must be a JSON object")
+		if not isinstance(rule.get("enabled", True), bool):
+			raise ValueError("rule enabled setting must be true or false")
+		extensions = rule.get("extensions")
+		if (extensions is not None and
+			(not isinstance(extensions, list) or
+			 any(not isinstance(extension, str) for extension in extensions))):
+			raise ValueError("rule extensions must be a list of strings")
 	return rules, hardcoded_patches
 
 
@@ -478,7 +488,7 @@ def process_file(input_path, output_path, rules, hardcoded_patches):
 		for path in expand_single_val_sgroups(tree.getroot()):
 			patches.append("expand-single-val-sgroups: {}".format(path))
 	for rule in rules:
-		if not rule_applies_to_file(rule, input_path):
+		if not rule.get("enabled", True) or not rule_applies_to_file(rule, input_path):
 			continue
 		for path in apply_rule(tree.getroot(), rule):
 			if rule.get("action") == "replace":

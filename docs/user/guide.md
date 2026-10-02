@@ -2,10 +2,23 @@
 
 ## Goal
 
-The tool provides two browser-based IEC 61850 workflows:
+The tool provides three browser-based IEC 61850 workflows:
 
 - compare an **SSD** file (system specification) with an **ICD** file (IED capabilities),
-- search SCL data instances that are linked to a DataTypeTemplates identifier.
+- search SCL data instances that are linked to a DataTypeTemplates identifier,
+- run the PLES SCL patch workflow on an ICD, IID, or SCD submission.
+
+## SCL patch runner workflow
+
+1. Open the **SCL patch runner** tool. It is selected by default.
+2. Select an ICD, IID, or SCD input file.
+3. Toggle each built-in patch and each parameterized rule to enable or disable it.
+4. Use **Edit** on a parameterized rule to change its action fields or the file extensions it applies to; optionally add a custom rule or remove an existing one.
+5. Click **Run patch**.
+6. The browser sends the file and the selected rule set to the configured patch backend.
+7. The backend runs the Python patch script and downloads the patched file.
+
+The patch service must be reachable through the `VITE_PATCH_API_URL` environment variable. For local development, point it to `http://localhost:8000`. For GitHub Pages, use the public Render URL of the deployed backend. Parameterized rules default to enabled; each can be toggled independently, edited, and assigned its own extension list.
 
 ## IED compatibility checker workflow
 

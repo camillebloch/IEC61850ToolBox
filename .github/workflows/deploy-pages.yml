@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - iop-patch-tools
+      - 24-add-the-python-code-call-to-the-existing-webinterface
   workflow_dispatch:
 
 permissions:
@@ -34,7 +34,12 @@ jobs:
         run: npm ci
 
       - name: Build application
+        env:
+          VITE_PATCH_API_URL: ${{ secrets.VITE_PATCH_API_URL }}
         run: npm run build
+
+      - name: Ensure rules file is published
+        run: cp public/ples-iop-rules.json dist/ples-iop-rules.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
