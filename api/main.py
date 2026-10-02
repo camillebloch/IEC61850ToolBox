@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -26,10 +26,36 @@ def health() -> dict[str, str]:
 
 
 @app.post("/patch")
-async def patch_scl(
-    file: UploadFile = File(...),
-    rules: str = Form("{}"),
-) -> FileResponse:
+async def patch_scl(request: Request) -> FileResponse:
+    content_type = request.headers.get("content-type", "")
+    if isinstance(content_type, bytes):
+        content_type = content_type.decode("latin-1")
+
+    try:
+        if "multipart/form-data" in content_type.lower():
+            form = await request.form()
+            file = form.get("file")
+            rules = form.get("rules", "{}")
+            if isinstance(rules, (bytes, bytearray)):
+                rules = rules.decode("utf-8")
+        else:
+            payload = await request.json()
+            file = payload.get("file")
+            rules = payload.get("rules", "{}")
+            if isinstance(rules, (bytes, bytearray)):
+                rules = rules.decode("utf-8")
+    except Exception as exc:  # pragma: no cover - defensive fallback for malformed requests
+        raise HTTPException(
+            status_code=400,
+            detail="Request body must be multipart/form-data with a file and rules JSON, or a JSON payload with matching fields.",
+        ) from exc
+
+    if file is None:
+        raise HTTPException(status_code=400, detail="A file upload is required.")
+
+    if not hasattr(file, "filename"):
+        raise HTTPException(status_code=400, detail="The uploaded file is missing its filename metadata.")
+
     try:
         payload = json.loads(rules)
     except json.JSONDecodeError as exc:
@@ -37,6 +63,9 @@ async def patch_scl(
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="File name is required")
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Rules JSON must be an object with 'hardcodedPatches' and 'rules' entries.")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
