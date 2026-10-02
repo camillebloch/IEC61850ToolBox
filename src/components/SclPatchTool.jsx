@@ -72,6 +72,8 @@ export default function SclPatchTool() {
   const [patchState, setPatchState] = useState({ hardcodedPatches: {}, rules: [] })
   const [loadingError, setLoadingError] = useState('')
   const [runStatus, setRunStatus] = useState('')
+  const [pendingDownloads, setPendingDownloads] = useState([])
+  const [isPatching, setIsPatching] = useState(false)
   const [editingRuleKey, setEditingRuleKey] = useState(null)
   const [ruleForm, setRuleForm] = useState(DEFAULT_RULE_FORM)
 
@@ -241,15 +243,12 @@ export default function SclPatchTool() {
       return
     }
 
-    if (typeof window.showDirectoryPicker !== 'function') {
-      setRunStatus('Folder saving requires a browser that supports folder access, such as desktop Chrome or Edge.')
-      return
-    }
+    setIsPatching(true)
+    setPendingDownloads([])
+    const patchedFiles = []
+    const outputNameCounts = new Map()
 
     try {
-      const destinationDirectory = await window.showDirectoryPicker({ mode: 'readwrite' })
-      const outputNameCounts = new Map()
-
       for (const [index, sourceFile] of sourceFiles.entries()) {
         setRunStatus(`Patching file ${index + 1} of ${sourceFiles.length}: ${sourceFile.name}`)
 
@@ -275,18 +274,53 @@ export default function SclPatchTool() {
         const outputName = duplicateCount === 0
           ? baseName
           : `${stem}_patched_${duplicateCount + 1}${extension}`
-        const outputHandle = await destinationDirectory.getFileHandle(outputName, { create: true })
+        patchedFiles.push({ fileName: outputName, blob: await response.blob() })
+      }
+
+      setPendingDownloads(patchedFiles)
+      setRunStatus(`${patchedFiles.length} patched file(s) are ready. Choose a destination folder to save them.`)
+    } catch (error) {
+      setPendingDownloads(patchedFiles)
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setRunStatus('Patching canceled.')
+      } else {
+        const detail = error instanceof Error ? error.message : 'Unable to patch the selected files.'
+        setRunStatus(patchedFiles.length > 0
+          ? `Patching stopped after ${patchedFiles.length} file(s). Completed files are ready to save. ${detail}`
+          : detail)
+      }
+    } finally {
+      setIsPatching(false)
+    }
+  }
+
+  const handleSavePatchedFiles = async () => {
+    if (pendingDownloads.length === 0) {
+      return
+    }
+
+    if (typeof window.showDirectoryPicker !== 'function') {
+      setRunStatus('Folder saving requires a browser that supports folder access, such as desktop Chrome or Edge.')
+      return
+    }
+
+    try {
+      const destinationDirectory = await window.showDirectoryPicker({ mode: 'readwrite' })
+
+      for (const { fileName, blob } of pendingDownloads) {
+        const outputHandle = await destinationDirectory.getFileHandle(fileName, { create: true })
         const writable = await outputHandle.createWritable()
-        await writable.write(await response.blob())
+        await writable.write(blob)
         await writable.close()
       }
 
-      setRunStatus(`${sourceFiles.length} patched file(s) saved in the selected folder.`)
+      setRunStatus(`${pendingDownloads.length} patched file(s) saved in the selected folder.`)
+      setPendingDownloads([])
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        setRunStatus('Folder selection canceled.')
+        setRunStatus('Folder selection canceled. Patched files are still ready to save.')
       } else {
-        setRunStatus(error instanceof Error ? error.message : 'Unable to patch the selected files.')
+        setRunStatus(error instanceof Error ? error.message : 'Unable to save the patched files.')
       }
     }
   }
@@ -322,6 +356,7 @@ export default function SclPatchTool() {
               const files = Array.from(event.target.files ?? [])
               if (files.length > 0) {
                 setSourceFiles(files)
+                setPendingDownloads([])
                 setRunStatus('')
               }
               event.target.value = ''
@@ -357,9 +392,9 @@ export default function SclPatchTool() {
             type="button"
             className="border border-cyan-500 bg-cyan-500 px-5 py-4 text-sm font-bold uppercase tracking-widest text-slate-950 transition-colors hover:bg-cyan-300 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
             onClick={handleRunPatch}
-            disabled={sourceFiles.length === 0}
+            disabled={sourceFiles.length === 0 || isPatching}
           >
-            Run patch
+            {isPatching ? 'Patching…' : 'Run patch'}
           </button>
         </div>
 
@@ -382,6 +417,15 @@ export default function SclPatchTool() {
       {runStatus && (
         <div className="mb-6 border border-cyan-700 bg-cyan-950/20 px-4 py-3 text-sm text-cyan-300">
           {runStatus}
+          {pendingDownloads.length > 0 && (
+            <button
+              type="button"
+              className="mt-3 block border border-cyan-500 bg-cyan-500 px-4 py-2 font-bold uppercase tracking-widest text-slate-950 hover:bg-cyan-300"
+              onClick={handleSavePatchedFiles}
+            >
+              Choose output folder and save {pendingDownloads.length} file(s)
+            </button>
+          )}
         </div>
       )}
 
