@@ -37,6 +37,12 @@
       "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='T103' and @lnClass='ITCI' and @inst='1']"
     },
     {
+      "action": "delete-attribute",
+      "enabled": true,
+      "attribute": "pServT",
+      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='ExtRef' and not(@intAddr) and (@pServT)]"
+    },
+    {
       "action": "delete",
       "enabled": true,
       "extensions": ["icd"],

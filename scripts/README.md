@@ -210,8 +210,8 @@ Rules without `extensions` apply to every input file. A rule with
 In the web interface, use each rule's checkbox to toggle it, **Edit** to change
 its action parameters, and the **Extensions** field to edit its file-type list.
 
-Supported actions are `set-attribute`, `add-attribute`, `set-text`, `delete`,
-`replace`, `replace-ancestor-attribute`, and
+Supported actions are `set-attribute`, `add-attribute`, `delete-attribute`,
+`set-text`, `delete`, `replace`, `replace-ancestor-attribute`, and
 `rename-data-type-template-id`. A `replace` rule searches either element text
 or an attribute:
 
@@ -227,6 +227,9 @@ or an attribute:
 
 Use `"target": "attribute"` together with an `"attribute"` name to replace
 characters in an attribute value.
+
+The `delete-attribute` action removes the named attribute from each element
+matched by its XPath and logs only elements where that attribute existed.
 
 The `replace-ancestor-attribute` action replaces an ancestor attribute value
 inside matched element text. It uses `ancestor`, `attribute`, and `replace`,

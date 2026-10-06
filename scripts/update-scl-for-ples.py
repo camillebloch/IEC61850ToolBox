@@ -5,6 +5,7 @@ Rules are JSON objects with one of these actions:
   {"action": "set-attribute", "xpath": "//{*}IED", "name": "name", "value": "new"}
   {"action": "set-text", "xpath": "//{*}Private", "value": "text"}
   {"action": "delete", "xpath": "//{*}Private"}
+  {"action": "delete-attribute", "xpath": "//{*}ExtRef", "attribute": "pServT"}
   {"action": "add-attribute", "xpath": "//{*}IED", "name": "x", "value": "y"}
 	{"action": "rename-data-type-template-id", "search": "old", "replace": "new"}
 
@@ -432,6 +433,16 @@ def apply_rule(root, rule):
 	if action in ("set-attribute", "add-attribute"):
 		for element in matches:
 			element.set(rule["name"], str(rule.get("value", "")))
+	elif action == "delete-attribute":
+		attribute = rule["attribute"]
+		patched_paths = [
+			element_path(root, element)
+			for element in matches
+			if attribute in element.attrib
+		]
+		for element in matches:
+			element.attrib.pop(attribute, None)
+		return patched_paths
 	elif action == "set-text":
 		for element in matches:
 			element.text = str(rule.get("value", ""))
