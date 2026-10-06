@@ -40,6 +40,7 @@
       "action": "delete-attribute",
       "enabled": true,
       "attribute": "pServT",
+      "extensions": ["iid"],
       "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='ExtRef' and not(@intAddr) and (@pServT)]"
     },
     {
