@@ -65,6 +65,52 @@ function buildExportConfig(patchState) {
 }
 
 const PATCH_API_URL = (import.meta.env.VITE_PATCH_API_URL || 'http://localhost:8000').replace(/\/+$/, '')
+const PATCH_WAKE_TIMEOUT_MS = 120000
+const PATCH_HEALTH_TIMEOUT_MS = 10000
+
+async function waitForPatchService(updateStatus) {
+  const startedAt = Date.now()
+  const deadline = startedAt + PATCH_WAKE_TIMEOUT_MS
+  let lastError = ''
+
+  while (Date.now() < deadline) {
+    const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000)
+    updateStatus(`Waking the backend service. Render may take up to two minutes after being idle (${elapsedSeconds}s)…`)
+
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(
+      () => controller.abort(),
+      Math.min(PATCH_HEALTH_TIMEOUT_MS, deadline - Date.now())
+    )
+
+    try {
+      const response = await fetch(`${PATCH_API_URL}/health`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      if (response.ok) {
+        return
+      }
+      if (response.status < 500) {
+        throw new Error(`The patch service health check failed (${response.status}).`)
+      }
+      lastError = `health check returned ${response.status}`
+    } catch (error) {
+      if (error instanceof Error && !['AbortError', 'TimeoutError'].includes(error.name) && !(error instanceof TypeError)) {
+        throw error
+      }
+      lastError = error instanceof Error ? error.message : 'temporary network error'
+    } finally {
+      window.clearTimeout(timeoutId)
+    }
+
+    if (Date.now() < deadline) {
+      await new Promise((resolve) => window.setTimeout(resolve, 3000))
+    }
+  }
+
+  throw new Error(`The patch service did not wake within two minutes${lastError ? ` (${lastError})` : ''}. Please retry.`)
+}
 
 export default function SclPatchTool() {
   const sourceInputRef = useRef(null)
@@ -78,9 +124,10 @@ export default function SclPatchTool() {
   const [ruleForm, setRuleForm] = useState(DEFAULT_RULE_FORM)
 
   useEffect(() => {
-    const rulesUrl = `${import.meta.env.BASE_URL}ples-iop-rules.json`
+    const rulesVersion = encodeURIComponent(import.meta.env.VITE_RULES_VERSION || 'local')
+    const rulesUrl = `${import.meta.env.BASE_URL}ples-iop-rules.json?v=${rulesVersion}`
 
-    fetch(rulesUrl)
+    fetch(rulesUrl, { cache: 'no-store' })
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Unable to load rules JSON (${response.status})`)
@@ -200,6 +247,10 @@ export default function SclPatchTool() {
       return
     }
 
+    if (nextRule.action === 'delete-attribute' && !nextRule.attribute) {
+      return
+    }
+
     const normalizedRule = {
       ...nextRule,
       enabled: true,
@@ -249,11 +300,7 @@ export default function SclPatchTool() {
     const outputNameCounts = new Map()
 
     try {
-      setRunStatus('Waking the backend service. Render may take up to a minute to resume after being idle…')
-      const healthResponse = await fetch(`${PATCH_API_URL}/health`, { cache: 'no-store' })
-      if (!healthResponse.ok) {
-        throw new Error(`The patch service health check failed (${healthResponse.status}).`)
-      }
+      await waitForPatchService(setRunStatus)
 
       for (const [index, sourceFile] of sourceFiles.entries()) {
         setRunStatus(`Patching file ${index + 1} of ${sourceFiles.length}: ${sourceFile.name}`)
@@ -311,7 +358,33 @@ export default function SclPatchTool() {
     }
 
     try {
-      const destinationDirectory = await window.showDirectoryPicker({ mode: 'readwrite' })
+      const destinationDirectory = await window.showDirectoryPicker({
+        id: 'scl-patch-output',
+        mode: 'readwrite',
+        startIn: 'downloads',
+      })
+
+      const existingFiles = []
+      for (const { fileName } of pendingDownloads) {
+        try {
+          await destinationDirectory.getFileHandle(fileName)
+          existingFiles.push(fileName)
+        } catch (error) {
+          if (!(error instanceof DOMException && error.name === 'NotFoundError')) {
+            throw error
+          }
+        }
+      }
+
+      if (existingFiles.length > 0) {
+        const overwrite = window.confirm(
+          `These files already exist in the selected folder:\n\n${existingFiles.join('\n')}\n\nOverwrite them?`
+        )
+        if (!overwrite) {
+          setRunStatus('Save canceled. Existing files were left unchanged.')
+          return
+        }
+      }
 
       for (const { fileName, blob } of pendingDownloads) {
         const outputHandle = await destinationDirectory.getFileHandle(fileName, { create: true })
@@ -472,7 +545,7 @@ export default function SclPatchTool() {
 
         <div className="border border-slate-700 bg-slate-950/60 p-4">
           <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-300 mb-3">Parameterized rules</h3>
-          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+          <div className="h-[calc(100vh-5rem)] min-h-0 space-y-3 overflow-y-auto pr-1">
             {patchState.rules.length === 0 ? (
               <p className="text-sm text-slate-500">No parameterized rules imported yet.</p>
             ) : (
@@ -522,6 +595,7 @@ export default function SclPatchTool() {
                           className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
                         >
                           <option value="delete">delete</option>
+                          <option value="delete-attribute">delete-attribute</option>
                           <option value="replace">replace</option>
                           <option value="replace-ancestor-attribute">replace-ancestor-attribute</option>
                           <option value="set-text">set-text</option>
@@ -560,6 +634,9 @@ export default function SclPatchTool() {
                           {renderRuleTextField(rule, 'replace', 'Replace')}
                         </>
                       )}
+
+                      {rule.action === 'delete-attribute' &&
+                        renderRuleTextField(rule, 'attribute', 'Attribute name')}
 
                       {rule.action === 'replace-ancestor-attribute' && (
                         <>
@@ -603,6 +680,7 @@ export default function SclPatchTool() {
               className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
             >
               <option value="delete">delete</option>
+              <option value="delete-attribute">delete-attribute</option>
               <option value="replace">replace</option>
               <option value="replace-ancestor-attribute">replace-ancestor-attribute</option>
               <option value="set-text">set-text</option>
@@ -631,6 +709,17 @@ export default function SclPatchTool() {
               placeholder="//*[local-name()='IED']"
             />
           </label>
+
+          {ruleForm.action === 'delete-attribute' && (
+            <label className="text-xs uppercase tracking-widest text-slate-500">
+              Attribute name
+              <input
+                value={ruleForm.attribute}
+                onChange={(event) => updateRuleForm('attribute', event.target.value)}
+                className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
+              />
+            </label>
+          )}
 
           {(ruleForm.action === 'replace' || ruleForm.action === 'replace-ancestor-attribute') && (
             <>

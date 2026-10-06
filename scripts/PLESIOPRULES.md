@@ -318,6 +318,11 @@ The current PLES IOP removal rules are in
 | `PowerLogic-P7` | `TCR` | `GLOC` | `1` |
 | `PowerLogic-P7` | `T103` | `ITCI` | `1` |
 
+The same rules file removes `pServT` from `ExtRef` elements inside
+`PowerLogic-P7` IEDs when `intAddr` is absent and `pServT` is present. This
+uses the `delete-attribute` action, which removes an attribute without deleting
+its containing element.
+
 The same JSON file also removes `ConnectedAP` elements only from ICD files when
 all of these conditions are true:
 

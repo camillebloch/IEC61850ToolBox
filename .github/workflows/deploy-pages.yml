@@ -36,6 +36,7 @@ jobs:
       - name: Build application
         env:
           VITE_PATCH_API_URL: ${{ secrets.VITE_PATCH_API_URL }}
+          VITE_RULES_VERSION: ${{ github.sha }}
         run: npm run build
 
       - name: Ensure rules file is published
