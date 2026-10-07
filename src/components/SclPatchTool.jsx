@@ -168,6 +168,18 @@ export default function SclPatchTool() {
     }))
   }
 
+  const handleSetAllHardcodedPatches = (enabled) => {
+    setPatchState((previous) => ({
+      ...previous,
+      hardcodedPatches: Object.fromEntries(
+        Object.entries(previous.hardcodedPatches).map(([patchName, setting]) => [
+          patchName,
+          { ...setting, enabled },
+        ])
+      ),
+    }))
+  }
+
   const handleUpdateHardcodedExtensions = (patchName, value) => {
     const extensions = value
       .split(',')
@@ -192,6 +204,13 @@ export default function SclPatchTool() {
       rules: previous.rules.map((rule) => (
         rule.key === ruleKey ? { ...rule, enabled: !rule.enabled } : rule
       )),
+    }))
+  }
+
+  const handleSetAllRules = (enabled) => {
+    setPatchState((previous) => ({
+      ...previous,
+      rules: previous.rules.map((rule) => ({ ...rule, enabled })),
     }))
   }
 
@@ -518,7 +537,27 @@ export default function SclPatchTool() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
         <div className="border border-slate-700 bg-slate-950/60 p-4">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-300 mb-3">Built-in patches</h3>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-300">Built-in patches</h3>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="border border-slate-600 px-2 py-1 text-xs uppercase tracking-widest text-slate-300 hover:border-cyan-500 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => handleSetAllHardcodedPatches(true)}
+                disabled={Object.keys(patchState.hardcodedPatches).length === 0}
+              >
+                Check all
+              </button>
+              <button
+                type="button"
+                className="border border-slate-600 px-2 py-1 text-xs uppercase tracking-widest text-slate-300 hover:border-cyan-500 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => handleSetAllHardcodedPatches(false)}
+                disabled={Object.keys(patchState.hardcodedPatches).length === 0}
+              >
+                Uncheck all
+              </button>
+            </div>
+          </div>
           <div className="space-y-3">
             {Object.entries(patchState.hardcodedPatches).length === 0 ? (
               <p className="text-sm text-slate-500">Loading patch definitions…</p>
@@ -552,7 +591,27 @@ export default function SclPatchTool() {
         </div>
 
         <div className="border border-slate-700 bg-slate-950/60 p-4">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-300 mb-3">Parameterized rules</h3>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-300">Parameterized rules</h3>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="border border-slate-600 px-2 py-1 text-xs uppercase tracking-widest text-slate-300 hover:border-cyan-500 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => handleSetAllRules(true)}
+                disabled={patchState.rules.length === 0}
+              >
+                Check all
+              </button>
+              <button
+                type="button"
+                className="border border-slate-600 px-2 py-1 text-xs uppercase tracking-widest text-slate-300 hover:border-cyan-500 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => handleSetAllRules(false)}
+                disabled={patchState.rules.length === 0}
+              >
+                Uncheck all
+              </button>
+            </div>
+          </div>
           <div className="h-[calc(100vh-5rem)] min-h-0 space-y-3 overflow-y-auto pr-1">
             {patchState.rules.length === 0 ? (
               <p className="text-sm text-slate-500">No parameterized rules imported yet.</p>
