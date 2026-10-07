@@ -8,6 +8,7 @@ const DEFAULT_RULE_FORM = {
   search: '',
   replace: '',
   attribute: '',
+  attributes: [],
   value: '',
   name: '',
   ancestor: 'IED',
@@ -195,9 +196,12 @@ export default function SclPatchTool() {
   }
 
   const handleUpdateRule = (ruleKey, field, value) => {
-    const updatedValue = field === 'extensions'
-      ? value.split(',').map((extension) => extension.trim().replace(/^\./, '')).filter(Boolean)
-      : value
+    let updatedValue = value
+    if (field === 'extensions') {
+      updatedValue = value.split(',').map((extension) => extension.trim().replace(/^\./, '')).filter(Boolean)
+    } else if (field === 'attributes') {
+      updatedValue = value.split(',').map((attribute) => attribute.trim()).filter(Boolean)
+    }
 
     setPatchState((previous) => ({
       ...previous,
@@ -248,6 +252,10 @@ export default function SclPatchTool() {
     }
 
     if (nextRule.action === 'delete-attribute' && !nextRule.attribute) {
+      return
+    }
+
+    if (nextRule.action === 'delete-duplicates' && nextRule.attributes.length === 0) {
       return
     }
 
@@ -596,6 +604,7 @@ export default function SclPatchTool() {
                         >
                           <option value="delete">delete</option>
                           <option value="delete-attribute">delete-attribute</option>
+                          <option value="delete-duplicates">delete-duplicates</option>
                           <option value="replace">replace</option>
                           <option value="replace-ancestor-attribute">replace-ancestor-attribute</option>
                           <option value="set-text">set-text</option>
@@ -637,6 +646,18 @@ export default function SclPatchTool() {
 
                       {rule.action === 'delete-attribute' &&
                         renderRuleTextField(rule, 'attribute', 'Attribute name')}
+
+                      {rule.action === 'delete-duplicates' && (
+                        <label className="md:col-span-2 text-xs uppercase tracking-widest text-slate-500">
+                          Duplicate key attributes
+                          <input
+                            value={(rule.attributes ?? []).join(', ')}
+                            onChange={(event) => handleUpdateRule(rule.key, 'attributes', event.target.value)}
+                            className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
+                            placeholder="version, revision"
+                          />
+                        </label>
+                      )}
 
                       {rule.action === 'replace-ancestor-attribute' && (
                         <>
@@ -681,6 +702,7 @@ export default function SclPatchTool() {
             >
               <option value="delete">delete</option>
               <option value="delete-attribute">delete-attribute</option>
+              <option value="delete-duplicates">delete-duplicates</option>
               <option value="replace">replace</option>
               <option value="replace-ancestor-attribute">replace-ancestor-attribute</option>
               <option value="set-text">set-text</option>
@@ -717,6 +739,21 @@ export default function SclPatchTool() {
                 value={ruleForm.attribute}
                 onChange={(event) => updateRuleForm('attribute', event.target.value)}
                 className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
+              />
+            </label>
+          )}
+
+          {ruleForm.action === 'delete-duplicates' && (
+            <label className="md:col-span-2 text-xs uppercase tracking-widest text-slate-500">
+              Duplicate key attributes
+              <input
+                value={ruleForm.attributes.join(', ')}
+                onChange={(event) => updateRuleForm(
+                  'attributes',
+                  event.target.value.split(',').map((attribute) => attribute.trim()).filter(Boolean)
+                )}
+                className="mt-1 w-full bg-slate-800 border border-slate-600 text-slate-100 text-sm px-3 py-2"
+                placeholder="version, revision"
               />
             </label>
           )}

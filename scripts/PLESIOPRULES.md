@@ -301,6 +301,8 @@ They support these actions:
 
 - `set-attribute`
 - `add-attribute`
+- `delete-attribute`
+- `delete-duplicates`
 - `set-text`
 - `delete`
 - `replace`
@@ -322,6 +324,10 @@ The same rules file removes `pServT` from `ExtRef` elements inside
 `PowerLogic-P7` IEDs when `intAddr` is absent and `pServT` is present. This
 uses the `delete-attribute` action, which removes an attribute without deleting
 its containing element.
+
+The rules also remove duplicate `Hitem` elements by the exact
+`version`/`revision` attribute pair, keeping the first match in document order.
+An element missing either attribute is not considered a duplicate candidate.
 
 The same JSON file also removes `ConnectedAP` elements only from ICD files when
 all of these conditions are true:
