@@ -211,9 +211,9 @@ In the web interface, use each rule's checkbox to toggle it, **Edit** to change
 its action parameters, and the **Extensions** field to edit its file-type list.
 
 Supported actions are `set-attribute`, `add-attribute`, `delete-attribute`,
-`set-text`, `delete`, `replace`, `replace-ancestor-attribute`, and
-`rename-data-type-template-id`. A `replace` rule searches either element text
-or an attribute:
+`delete-duplicates`, `set-text`, `delete`, `replace`,
+`replace-ancestor-attribute`, and `rename-data-type-template-id`. A `replace`
+rule searches either element text or an attribute:
 
 ```json
 {
@@ -230,6 +230,19 @@ characters in an attribute value.
 
 The `delete-attribute` action removes the named attribute from each element
 matched by its XPath and logs only elements where that attribute existed.
+
+The `delete-duplicates` action groups XPath matches by the exact values of the
+attributes in its `attributes` array, keeps the first element in document order,
+and deletes later duplicates. Matches missing any grouping attribute are
+preserved. For example:
+
+```json
+{
+  "action": "delete-duplicates",
+  "xpath": "//*[local-name()='Hitem']",
+  "attributes": ["version", "revision"]
+}
+```
 
 The `replace-ancestor-attribute` action replaces an ancestor attribute value
 inside matched element text. It uses `ancestor`, `attribute`, and `replace`,

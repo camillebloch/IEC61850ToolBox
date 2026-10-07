@@ -27,6 +27,12 @@
     {
       "action": "delete",
       "enabled": true,
+      "extensions": ["icd"],
+      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and (@lnClass='LSVS' or @lnClass='LGOS')]"
+    },
+    {
+      "action": "delete",
+      "enabled": true,
       "extensions": ["icd", "iid"],
       "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='TCR' and @lnClass='GLOG' and @inst='1']"
     },
@@ -42,6 +48,12 @@
       "attribute": "pServT",
       "extensions": ["iid"],
       "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='ExtRef' and not(@intAddr) and (@pServT)]"
+    },
+    {
+      "action": "delete-duplicates",
+      "enabled": true,
+      "attributes": ["version", "revision"],
+      "xpath": "//*[local-name()='Hitem']"
     },
     {
       "action": "delete",

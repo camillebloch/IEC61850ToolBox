@@ -6,6 +6,7 @@ Rules are JSON objects with one of these actions:
   {"action": "set-text", "xpath": "//{*}Private", "value": "text"}
   {"action": "delete", "xpath": "//{*}Private"}
   {"action": "delete-attribute", "xpath": "//{*}ExtRef", "attribute": "pServT"}
+  {"action": "delete-duplicates", "xpath": "//{*}Hitem", "attributes": ["version", "revision"]}
   {"action": "add-attribute", "xpath": "//{*}IED", "name": "x", "value": "y"}
 	{"action": "rename-data-type-template-id", "search": "old", "replace": "new"}
 
@@ -429,6 +430,26 @@ def apply_rule(root, rule):
 				patched_paths.append(element_path(root, element))
 		return patched_paths
 
+	if action == "delete-duplicates":
+		attributes = rule["attributes"]
+		seen = set()
+		duplicates = []
+		for element in matches:
+			if any(attribute not in element.attrib for attribute in attributes):
+				continue
+			key = tuple(element.get(attribute) for attribute in attributes)
+			if key in seen:
+				duplicates.append(element)
+			else:
+				seen.add(key)
+		parents = parent_map(root)
+		duplicate_paths = [element_path(root, element) for element in duplicates]
+		for element in duplicates:
+			parent = parents.get(element)
+			if parent is not None:
+				parent.remove(element)
+		return duplicate_paths
+
 	matched_paths = [element_path(root, element) for element in matches]
 	if action in ("set-attribute", "add-attribute"):
 		for element in matches:
@@ -515,6 +536,13 @@ def load_rules(args):
 			raise ValueError("each rule must be a JSON object")
 		if not isinstance(rule.get("enabled", True), bool):
 			raise ValueError("rule enabled setting must be true or false")
+		if rule.get("action") == "delete-duplicates":
+			attributes = rule.get("attributes")
+			if (not isinstance(attributes, list) or not attributes or
+				any(not isinstance(attribute, str) or not attribute
+					for attribute in attributes)):
+				raise ValueError(
+					"delete-duplicates attributes must be a non-empty list of strings")
 		extensions = rule.get("extensions")
 		if (extensions is not None and
 			(not isinstance(extensions, list) or
