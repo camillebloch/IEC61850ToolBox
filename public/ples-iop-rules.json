@@ -27,6 +27,12 @@
     {
       "action": "delete",
       "enabled": true,
+      "extensions": ["icd"],
+      "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and (@lnClass='LSVS' or @lnClass='LGOS')]"
+    },
+    {
+      "action": "delete",
+      "enabled": true,
       "extensions": ["icd", "iid"],
       "xpath": "//*[local-name()='IED' and @type='PowerLogic-P7']//*[local-name()='LN' and @prefix='TCR' and @lnClass='GLOG' and @inst='1']"
     },
