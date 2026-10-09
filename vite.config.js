@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: env.GITHUB_ACTIONS ? '/IEC61850ToolBox/' : '/',
+  base: env.GITHUB_ACTIONS ? '/IEC61850ToolBox/' : process.env.VITE_BASE || '/IEC61850ToolBox/',
   plugins: [
     react(),
     tailwindcss(),
