@@ -12,13 +12,13 @@
       "enabled": false,
       "extensions": ["icd", "iid"]
     },
-    "expand-single-val-sgroups": true,
+    "expand-single-val-sgroups": false,
     "truncate-desc-255": {
       "enabled": false,
       "extensions": ["scd"]
     },
     "schneider-redundant-ethernet": {
-      "enabled": true,
+      "enabled": false,
       "extensions": ["scd"]
     },
     "schneider-sv-cb-ref-normalization": true
@@ -93,8 +93,8 @@
       "enabled": true,
       "extensions": ["icd", "iid"],
       "target": "text",
-      "search": ">616<",
-      "replace": ">99999<",
+      "search": "616",
+      "replace": "99999",
       "xpath": "//{*}Val"
     },
     {
