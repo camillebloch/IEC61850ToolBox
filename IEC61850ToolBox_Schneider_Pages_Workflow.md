@@ -101,11 +101,11 @@ The two build modes behave as follows:
 npm run build
     -> /IEC61850ToolBox/
 
-npm run build -- --mode schneider
+npm run build:schneider
     -> /SESA160638/IEC61850ToolBox/
 ```
 
-The standard build remains suitable for the personal GitHub Pages site. The `schneider` mode produces asset paths for the Schneider Pages address.
+The standard build remains suitable for the personal GitHub Pages site. The `schneider` mode produces asset paths for the Schneider Pages address and loads `.env.schneider`, which sets `VITE_PATCH_API_URL` to the public Render backend. Build the Schneider site locally with `npm run build:schneider`; Vite embeds that backend URL into the generated JavaScript in `dist`.
 
 ---
 

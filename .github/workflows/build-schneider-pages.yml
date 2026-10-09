@@ -31,7 +31,7 @@ jobs:
         run: npm ci
 
       - name: Build static site for Schneider Pages
-        run: npm run build -- --mode schneider
+        run: npm run build:schneider
 
       - name: Add Pages marker
         run: touch dist/.nojekyll

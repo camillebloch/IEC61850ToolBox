@@ -70,6 +70,12 @@ VITE_PATCH_API_URL=https://your-render-service.onrender.com
 npm run build
 ```
 
+Build the Schneider Pages version with its Schneider-specific asset path and Render backend URL:
+
+```bash
+npm run build:schneider
+```
+
 ## Preview production bundle
 
 ```bash

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:schneider": "vite build --mode schneider",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "cucumber-js tests/features/**/*.feature",
