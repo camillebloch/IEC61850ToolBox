@@ -31,9 +31,7 @@ jobs:
         run: npm ci
 
       - name: Build static site for Schneider Pages
-        env:
-          VITE_BASE: /SESA160638/IEC61850ToolBox/
-        run: npm run build
+        run: npm run build -- --mode schneider
 
       - name: Add Pages marker
         run: touch dist/.nojekyll
