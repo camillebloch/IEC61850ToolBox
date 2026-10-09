@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
-    "exceljs": "^4.4.0",
+    "exceljs": "^3.4.0",
     "fast-xml-parser": "^5.7.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
