@@ -105,7 +105,7 @@ npm run build:schneider
     -> /SESA160638/IEC61850ToolBox/
 ```
 
-The standard build remains suitable for the personal GitHub Pages site. The `schneider` mode produces asset paths for the Schneider Pages address and loads `.env.schneider`, which sets `VITE_PATCH_API_URL` to the public Render backend. Build the Schneider site locally with `npm run build:schneider`; Vite embeds that backend URL into the generated JavaScript in `dist`.
+The standard build remains suitable for the personal GitHub Pages site. The `schneider` mode produces asset paths for the Schneider Pages address and loads `.env.schneider`, which sets `VITE_PATCH_API_URL` to the public Render backend and limits `VITE_ENABLED_TOOLS` to `scl-patch-runner`. Other builds show all tools unless their own `VITE_ENABLED_TOOLS` is set. Build the Schneider site locally with `npm run build:schneider`; Vite embeds these settings in the generated client code in `dist`. This setting hides tools from the navigation; it does not remove their implementation from the client bundle.
 
 ---
 
@@ -409,23 +409,53 @@ with:
 
 ```powershell
 $ErrorActionPreference = "Stop"
+
 $MirrorPath = "C:\GIT-Mirror\IEC61850ToolBox.git"
 
-Set-Location $MirrorPath
+# Remember where the script was started
+$OriginalPath = Get-Location
 
-Write-Host "Fetching source and generated branches from personal GitHub..."
-git fetch --prune personal
+try {
+    Set-Location $MirrorPath
 
-Write-Host "Publishing branches to Schneider GitHub Enterprise..."
-git push schneider --all
+    Write-Host "Fetching from personal GitHub..."
+    git fetch --prune personal
+    if ($LASTEXITCODE -ne 0) { throw "Failed to fetch personal repository." }
 
-Write-Host "Publishing tags to Schneider GitHub Enterprise..."
-git push schneider --tags
+    Write-Host "Refreshing Schneider state..."
+    git fetch schneider
+    if ($LASTEXITCODE -ne 0) { throw "Failed to fetch Schneider repository." }
 
-Write-Host "Checking the Schneider static branch..."
-git ls-remote --heads schneider gh-pages-schneider
+    Write-Host "Publishing main..."
+    git push schneider main
+    if ($LASTEXITCODE -ne 0) { throw "Failed to publish main." }
 
-Write-Host "Transfer completed."
+    Write-Host "Publishing generated Schneider Pages..."
+    git push --force-with-lease schneider gh-pages-schneider
+    if ($LASTEXITCODE -ne 0) { throw "Failed to publish gh-pages-schneider." }
+
+    Write-Host "Publishing tags..."
+    git push schneider --tags
+    if ($LASTEXITCODE -ne 0) { throw "Failed to publish tags." }
+
+    Write-Host "Checking Schneider Pages branch..."
+    git ls-remote --heads schneider gh-pages-schneider
+    if ($LASTEXITCODE -ne 0) { throw "Failed to verify gh-pages-schneider." }
+
+    Write-Host ""
+    Write-Host "Publication completed successfully." -ForegroundColor Green
+}
+catch {
+    Write-Host ""
+    Write-Host "Publication failed: $($_.Exception.Message)" -ForegroundColor Red
+}
+finally {
+    # Always return to the directory where the script was started
+    Set-Location $OriginalPath
+
+    Write-Host ""
+    Write-Host "Returned to: $(Get-Location)"
+}
 ```
 
 Run the script with:

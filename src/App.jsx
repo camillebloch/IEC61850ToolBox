@@ -27,11 +27,30 @@ const TOOLS = [
   },
 ]
 
+const ENABLED_TOOL_IDS = import.meta.env.VITE_ENABLED_TOOLS
+  ?.split(',')
+  .map((toolId) => toolId.trim())
+  .filter(Boolean)
+const UNKNOWN_TOOL_IDS = ENABLED_TOOL_IDS?.filter(
+  (toolId) => !TOOLS.some(({ id }) => id === toolId)
+) ?? []
+const AVAILABLE_TOOLS = ENABLED_TOOL_IDS
+  ? TOOLS.filter(({ id }) => ENABLED_TOOL_IDS.includes(id))
+  : TOOLS
+
+if (UNKNOWN_TOOL_IDS.length > 0) {
+  throw new Error(`VITE_ENABLED_TOOLS contains unknown tool IDs: ${UNKNOWN_TOOL_IDS.join(', ')}`)
+}
+
+if (AVAILABLE_TOOLS.length === 0) {
+  throw new Error('VITE_ENABLED_TOOLS must include at least one recognized tool ID.')
+}
+
 const SCL_FILE_EXTENSIONS = '.icd,.iid,.isd,.cid,.ssd,.scd,.sed,.asd,.xml'
 const SCL_FILE_LABELS = ['ICD', 'IID', 'ISD', 'CID', 'SSD', 'SCD', 'SED', 'ASD']
 
 export default function App() {
-  const [activeTool, setActiveTool] = useState(TOOL_IDS.sclPatchRunner)
+  const [activeTool, setActiveTool] = useState(AVAILABLE_TOOLS[0].id)
   const [ssdData, setSsdData] = useState(null)
   const [icdData, setIcdData] = useState(null)
   const [report, setReport] = useState(null)
@@ -85,7 +104,7 @@ export default function App() {
         </div>
 
         <nav className="flex flex-wrap gap-2" aria-label="Tool selection">
-          {TOOLS.map((tool) => {
+          {AVAILABLE_TOOLS.map((tool) => {
             const isActive = activeTool === tool.id
 
             return (

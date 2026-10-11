@@ -76,6 +76,14 @@ Build the Schneider Pages version with its Schneider-specific asset path and Ren
 npm run build:schneider
 ```
 
+Build-time tool availability can be configured with `VITE_ENABLED_TOOLS`, a comma-separated list of tool IDs:
+
+- `scl-patch-runner`
+- `compatibility-checker`
+- `data-instance-search`
+
+When unset, all tools are enabled. The Schneider build sets `VITE_ENABLED_TOOLS=scl-patch-runner`, so only the SCL Patch runner is shown there. This controls the UI, not access to the tool source code in the client bundle.
+
 ## Preview production bundle
 
 ```bash
