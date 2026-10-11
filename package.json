@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:schneider": "vite build --mode schneider",
+    "build:schneider-ext": "vite build --mode schneider-ext",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "cucumber-js tests/features/**/*.feature",

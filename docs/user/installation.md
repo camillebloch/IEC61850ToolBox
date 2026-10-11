@@ -76,13 +76,19 @@ Build the Schneider Pages version with its Schneider-specific asset path and Ren
 npm run build:schneider
 ```
 
+For the external GitHub Pages repository, build with its project-page asset path:
+
+```bash
+npm run build:schneider-ext
+```
+
 Build-time tool availability can be configured with `VITE_ENABLED_TOOLS`, a comma-separated list of tool IDs:
 
 - `scl-patch-runner`
 - `compatibility-checker`
 - `data-instance-search`
 
-When unset, all tools are enabled. The Schneider build sets `VITE_ENABLED_TOOLS=scl-patch-runner`, so only the SCL Patch runner is shown there. This controls the UI, not access to the tool source code in the client bundle.
+When unset, all tools are enabled. Both Schneider-targeted builds set `VITE_ENABLED_TOOLS=scl-patch-runner`, so only the SCL Patch runner is shown there. The standard `build` uses `/IEC61850ToolBox/`; `build:schneider` uses `/SESA160638/IEC61850ToolBox/`; and `build:schneider-ext` uses `/IEC61850ToolBox/`. These settings hide tools from the navigation; they do not remove their implementation from the client bundle.
 
 ## Preview production bundle
 

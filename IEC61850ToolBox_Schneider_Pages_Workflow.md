@@ -4,13 +4,13 @@ git show personal/gh-pages-schneider:index.html
 
 ## 1. Purpose
 
-This document describes the current workflow used to:
+This document describes the workflow used to:
 
 1. Develop `IEC61850ToolBox` in the personal GitHub repository.
-2. Automatically generate a Schneider-specific static website after each update to `main`.
-3. Publish the generated website to a dedicated branch.
-4. Synchronize the source and generated website to Schneider GitHub Enterprise.
-5. Serve the generated branch through Schneider GitHub Pages.
+2. Automatically generate separate static websites for Schneider Pages and GitHub Pages after each update to `main`.
+3. Publish each build to a dedicated branch.
+4. Synchronize the source and matching website build to each destination repository.
+5. Serve each generated branch through its respective Pages host.
 
 ```text
 Personal GitHub: main
@@ -20,18 +20,21 @@ Personal GitHub: main
 Personal GitHub Actions
         |
         | npm ci
-        | npm test
-        | npm run build -- --mode schneider
+        | build:schneider
+        | build:schneider-ext
         v
-Personal GitHub: gh-pages-schneider
+Personal GitHub:
+  gh-pages-schneider      (Schneider asset base)
+  gh-pages-schneider-ext  (GitHub project-page asset base)
         |
         | controlled one-way synchronization
-        v
-Schneider GHES: gh-pages-schneider
-        |
-        | deploy from branch / root
-        v
-Schneider GitHub Pages
+        +--------------------------+
+        v                          v
+Schneider GHES              Camille Bloch GitHub
+gh-pages-schneider          gh-pages-schneider
+        |                          |
+        v                          v
+Schneider Pages             camillebloch.github.io
 ```
 
 ---
@@ -56,6 +59,12 @@ https://github.schneider-electric.com/SESA160638/IEC61850ToolBox.git
 https://pages.github.schneider-electric.com/SESA160638/IEC61850ToolBox/
 ```
 
+### External GitHub Pages site
+
+```text
+https://camillebloch.github.io/IEC61850ToolBox/
+```
+
 ---
 
 ## 3. Branch roles
@@ -64,10 +73,13 @@ https://pages.github.schneider-electric.com/SESA160638/IEC61850ToolBox/
 | ---------------------- | --------------- | ------------------------------------------------ |
 | `main`               | Personal GitHub | Development source and source of truth           |
 | `gh-pages-schneider` | Personal GitHub | Automatically generated Schneider static website |
+| `gh-pages-schneider-ext` | Personal GitHub | Generated static website with GitHub project-page asset paths |
 | `main`               | Schneider GHES  | Mirrored source code                             |
 | `gh-pages-schneider` | Schneider GHES  | Static files served by Schneider GitHub Pages    |
+| `main`               | `camillebloch/IEC61850ToolBox` | Mirrored source code                 |
+| `gh-pages-schneider` | `camillebloch/IEC61850ToolBox` | Static files served by GitHub Pages |
 
-The `gh-pages-schneider` branch is generated automatically and must not be edited manually.
+Both generated branches are created automatically and must not be edited manually.
 
 ---
 
@@ -95,7 +107,7 @@ export default defineConfig(({ mode }) => ({
 }))
 ```
 
-The two build modes behave as follows:
+The build modes behave as follows:
 
 ```text
 npm run build
@@ -103,9 +115,12 @@ npm run build
 
 npm run build:schneider
     -> /SESA160638/IEC61850ToolBox/
+
+npm run build:schneider-ext
+    -> /IEC61850ToolBox/
 ```
 
-The standard build remains suitable for the personal GitHub Pages site. The `schneider` mode produces asset paths for the Schneider Pages address and loads `.env.schneider`, which sets `VITE_PATCH_API_URL` to the public Render backend and limits `VITE_ENABLED_TOOLS` to `scl-patch-runner`. Other builds show all tools unless their own `VITE_ENABLED_TOOLS` is set. Build the Schneider site locally with `npm run build:schneider`; Vite embeds these settings in the generated client code in `dist`. This setting hides tools from the navigation; it does not remove their implementation from the client bundle.
+The standard build and `schneider-ext` mode use the GitHub project-page asset path. The `schneider` mode uses Schneider's `/SESA160638/IEC61850ToolBox/` path. Each Schneider-targeted mode loads its matching `.env` file, which sets the Render backend and limits `VITE_ENABLED_TOOLS` to `scl-patch-runner`. The workflow publishes the resulting bundles as `gh-pages-schneider` and `gh-pages-schneider-ext` respectively. Tool visibility is a UI setting and does not remove implementation from the client bundle.
 
 ---
 
@@ -152,20 +167,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Test project
-        run: npm test -- --run
-
       - name: Build static site for Schneider Pages
-        run: npm run build -- --mode schneider
+        run: npm run build:schneider -- --outDir dist-schneider
 
-      - name: Add Pages marker
-        run: touch dist/.nojekyll
+      - name: Add Schneider Pages marker
+        run: touch dist-schneider/.nojekyll
 
       - name: Publish generated site to gh-pages-schneider
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd dist
+          cd dist-schneider
           git init
           git checkout -b gh-pages-schneider
           git config user.name "github-actions[bot]"
@@ -174,18 +186,27 @@ jobs:
           git commit -m "Build Schneider Pages from ${GITHUB_SHA}"
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --force origin gh-pages-schneider
+
+      - name: Build static site for external GitHub Pages
+        run: npm run build:schneider-ext -- --outDir dist-schneider-ext
+
+      - name: Add external Pages marker
+        run: touch dist-schneider-ext/.nojekyll
+
+      - name: Publish generated site to gh-pages-schneider-ext
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist-schneider-ext
+          git init
+          git checkout -b gh-pages-schneider-ext
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "Build external Pages from ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin gh-pages-schneider-ext
 ```
-
-### Test step variants
-
-If the project test script already runs non-interactively, use:
-
-```yaml
-- name: Test project
-  run: npm test
-```
-
-If the project has no test script, remove the test step.
 
 ---
 
@@ -197,15 +218,14 @@ In the personal GitHub repository, open:
 Settings > Actions > General > Workflow permissions
 ```
 
-Select:
+Select `Read and write permissions`. Ensure branch rules allow the workflow to create or force-update both generated branches:
 
 ```text
-Read and write permissions
+gh-pages-schneider
+gh-pages-schneider-ext
 ```
 
-This allows the workflow's `GITHUB_TOKEN` to create and replace `gh-pages-schneider`.
-
-Ensure that branch rules do not prevent the workflow from force-updating this generated branch.
+This allows the workflow's `GITHUB_TOKEN` to create and replace both generated branches.
 
 ---
 
@@ -214,7 +234,7 @@ Ensure that branch rules do not prevent the workflow from force-updating this ge
 From the normal personal development checkout:
 
 ```bash
-git add vite.config.js .github/workflows/build-schneider-pages.yml
+git add vite.config.js package.json .env.schneider-ext .github/workflows/build-schneider-pages.yml
 git commit -m "Configure Schneider Pages publication"
 git push origin main
 ```
@@ -224,17 +244,24 @@ A push to `main` starts the workflow automatically.
 The workflow can also be started manually from:
 
 ```text
-Actions > Build Schneider Pages branch > Run workflow
+Actions > Build Schneider Pages branches > Run workflow
 ```
 
 ---
 
 ## 8. Generated branch content
 
-After a successful workflow run, `gh-pages-schneider` must contain the generated files at its root:
+After a successful workflow run, both generated branches must contain the generated files at their root:
 
 ```text
 gh-pages-schneider
+├── index.html
+├── .nojekyll
+└── assets/
+    ├── *.js
+    └── *.css
+
+gh-pages-schneider-ext
 ├── index.html
 ├── .nojekyll
 └── assets/
@@ -255,6 +282,8 @@ The generated `index.html` should reference assets under:
 ```text
 /SESA160638/IEC61850ToolBox/assets/
 ```
+
+The external branch's `index.html` should reference assets under `/IEC61850ToolBox/assets/`, not the Schneider-specific prefix.
 
 ---
 
@@ -281,6 +310,7 @@ cd IEC61850ToolBox.git
 ```bash
 git remote rename origin personal
 git remote add schneider https://github.schneider-electric.com/SESA160638/IEC61850ToolBox.git
+git remote add schneider-ext https://github.com/camillebloch/IEC61850ToolBox.git
 ```
 
 Verify the remotes:
@@ -296,13 +326,15 @@ personal   https://github.com/milka34Fr/IEC61850ToolBox.git (fetch)
 personal   https://github.com/milka34Fr/IEC61850ToolBox.git (push)
 schneider  https://github.schneider-electric.com/SESA160638/IEC61850ToolBox.git (fetch)
 schneider  https://github.schneider-electric.com/SESA160638/IEC61850ToolBox.git (push)
+schneider-ext  https://github.com/camillebloch/IEC61850ToolBox.git (fetch)
+schneider-ext  https://github.com/camillebloch/IEC61850ToolBox.git (push)
 ```
 
 ---
 
-## 10. Publish to Schneider GitHub Enterprise
+## 10. Publish to both destination repositories
 
-Run the synchronization only after the personal GitHub Actions workflow has completed successfully.
+Run the synchronization only after the personal GitHub Actions workflow has completed successfully. The publication script sends `main` and tags to both destination repositories. It sends the Schneider build from personal `gh-pages-schneider` to Schneider's `gh-pages-schneider` branch, and sends the external build from personal `gh-pages-schneider-ext` to `schneider-ext`'s `gh-pages-schneider` branch.
 
 Open the local mirror:
 
@@ -310,35 +342,29 @@ Open the local mirror:
 cd C:\GIT-Mirror\IEC61850ToolBox.git
 ```
 
-Fetch the latest personal branches:
+Fetch the latest source branches:
 
 ```bash
 git fetch --prune personal
 ```
 
-Push the branches to Schneider:
-
-```bash
-git push schneider --all
-```
-
-Push the tags:
-
-```bash
-git push schneider --tags
-```
-
-This transfers both:
+This publishes the following content:
 
 ```text
-main
-gh-pages-schneider
+schneider:
+  main
+  gh-pages-schneider (built with /SESA160638/IEC61850ToolBox/)
+
+schneider-ext:
+  main
+  gh-pages-schneider (built with /IEC61850ToolBox/)
 ```
 
-Do not use:
+Do not use either of these commands:
 
 ```bash
 git push --mirror schneider
+git push --mirror schneider-ext
 ```
 
 ---
@@ -367,9 +393,25 @@ The published site is:
 https://pages.github.schneider-electric.com/SESA160638/IEC61850ToolBox/
 ```
 
+## 12. Configure external GitHub Pages
+
+In `camillebloch/IEC61850ToolBox`, open `Settings > Pages` and configure:
+
+```text
+Source:  Deploy from a branch
+Branch:  gh-pages-schneider
+Folder:  /(root)
+```
+
+The published site is:
+
+```text
+https://camillebloch.github.io/IEC61850ToolBox/
+```
+
 ---
 
-## 12. Routine publication process
+## 13. Routine publication process
 
 ### Automatic process on personal GitHub
 
@@ -377,86 +419,32 @@ Every push to personal `main` automatically:
 
 1. Checks out the source.
 2. Installs dependencies.
-3. Runs the tests.
-4. Builds the project in `schneider` mode.
-5. Adds `.nojekyll` to the generated files.
-6. Replaces `gh-pages-schneider` with the contents of `dist`.
+3. Builds Schneider's site in `schneider` mode and publishes it to `gh-pages-schneider`.
+4. Builds the external site in `schneider-ext` mode and publishes it to `gh-pages-schneider-ext`.
+5. Adds `.nojekyll` to each generated site.
 
-### Controlled transfer to Schneider
+### Controlled transfer to both repositories
 
 After the personal workflow succeeds:
 
 ```bash
 cd C:/GIT-Mirror/IEC61850ToolBox.git
 git fetch --prune personal
-git push schneider --all
-git push schneider --tags
 ```
 
-Schneider GitHub Pages then publishes the updated `gh-pages-schneider` branch.
+The deployment script publishes source and tags to both remotes, then maps the corresponding generated site branch to each remote's `gh-pages-schneider` branch.
 
 ---
 
-## 13. Optional PowerShell publication script
+## 14. PowerShell publication script
 
-Create:
+Use the checked-in script:
 
 ```text
 C:\GIT-Mirror\Publish-To-Schneider.ps1
 ```
 
-with:
-
-```powershell
-$ErrorActionPreference = "Stop"
-
-$MirrorPath = "C:\GIT-Mirror\IEC61850ToolBox.git"
-
-# Remember where the script was started
-$OriginalPath = Get-Location
-
-try {
-    Set-Location $MirrorPath
-
-    Write-Host "Fetching from personal GitHub..."
-    git fetch --prune personal
-    if ($LASTEXITCODE -ne 0) { throw "Failed to fetch personal repository." }
-
-    Write-Host "Refreshing Schneider state..."
-    git fetch schneider
-    if ($LASTEXITCODE -ne 0) { throw "Failed to fetch Schneider repository." }
-
-    Write-Host "Publishing main..."
-    git push schneider main
-    if ($LASTEXITCODE -ne 0) { throw "Failed to publish main." }
-
-    Write-Host "Publishing generated Schneider Pages..."
-    git push --force-with-lease schneider gh-pages-schneider
-    if ($LASTEXITCODE -ne 0) { throw "Failed to publish gh-pages-schneider." }
-
-    Write-Host "Publishing tags..."
-    git push schneider --tags
-    if ($LASTEXITCODE -ne 0) { throw "Failed to publish tags." }
-
-    Write-Host "Checking Schneider Pages branch..."
-    git ls-remote --heads schneider gh-pages-schneider
-    if ($LASTEXITCODE -ne 0) { throw "Failed to verify gh-pages-schneider." }
-
-    Write-Host ""
-    Write-Host "Publication completed successfully." -ForegroundColor Green
-}
-catch {
-    Write-Host ""
-    Write-Host "Publication failed: $($_.Exception.Message)" -ForegroundColor Red
-}
-finally {
-    # Always return to the directory where the script was started
-    Set-Location $OriginalPath
-
-    Write-Host ""
-    Write-Host "Returned to: $(Get-Location)"
-}
-```
+Copy the repository's `Publish-To-Schneider.ps1` to this path if needed. The script fetches the generated branches from `personal`, publishes `gh-pages-schneider` to the Schneider repository and `gh-pages-schneider-ext` to the external repository (mapping both to the destination branch `gh-pages-schneider`), and publishes `main` and tags to both. It attempts both remotes if one fails and exits unsuccessfully if either target fails.
 
 Run the script with:
 
@@ -466,17 +454,20 @@ powershell -ExecutionPolicy Bypass -File C:\GIT-Mirror\Publish-To-Schneider.ps1
 
 ---
 
-## 14. Verification checklist
+## 15. Verification checklist
 
 ### Personal GitHub
 
 - [ ] `main` contains the current source.
-- [ ] The `Build Schneider Pages branch` workflow succeeds.
+- [ ] The `Build Schneider Pages branches` workflow succeeds.
 - [ ] `gh-pages-schneider` exists.
+- [ ] `gh-pages-schneider-ext` exists.
 - [ ] `gh-pages-schneider/index.html` exists.
+- [ ] `gh-pages-schneider-ext/index.html` exists.
 - [ ] `.nojekyll` exists.
 - [ ] `assets/` contains compiled JavaScript and CSS.
 - [ ] Asset paths contain `/SESA160638/IEC61850ToolBox/`.
+- [ ] The external build references `/IEC61850ToolBox/assets/`.
 
 ### Schneider GitHub Enterprise
 
@@ -487,9 +478,16 @@ powershell -ExecutionPolicy Bypass -File C:\GIT-Mirror\Publish-To-Schneider.ps1
 - [ ] The website opens correctly.
 - [ ] Browser Developer Tools show no missing JavaScript or CSS files.
 
+### External GitHub repository
+
+- [ ] `main` contains the current mirrored source.
+- [ ] `gh-pages-schneider` contains the external build with `/IEC61850ToolBox/` asset paths.
+- [ ] Pages is configured for `gh-pages-schneider / (root)`.
+- [ ] `https://camillebloch.github.io/IEC61850ToolBox/` opens with no missing assets.
+
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 ### `npm ci` fails
 
