@@ -45,6 +45,11 @@ python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT
 VITE_PATCH_API_URL=https://your-render-service.onrender.com
 ```
 
+The GitHub Actions workflow `.github/workflows/deploy-render-backend.yml`
+triggers a Render deployment for pushes to `main` and the Schneider ClientLN
+ordering feature branch. It passes the pushed commit SHA to Render so the
+backend script is deployed from the same revision as the frontend rules.
+
 ## Endpoint
 
 ### `POST /patch`

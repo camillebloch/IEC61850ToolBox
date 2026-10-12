@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 36-new-patch-rename-clientln-to-keep-their-order-to-avoid-ples-reordering
   workflow_dispatch:
 
 permissions:
@@ -28,4 +29,4 @@ jobs:
             -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
             -H "Authorization: Bearer ${RENDER_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d "{\"commitId\":\"${GITHUB_SHA}\"}"
