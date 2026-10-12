@@ -21,7 +21,11 @@
       "enabled": false,
       "extensions": ["scd"]
     },
-    "schneider-sv-cb-ref-normalization": true
+    "schneider-sv-cb-ref-normalization": true,
+    "schneider-clientln-order": {
+      "enabled": true,
+      "extensions": ["scd"]
+    }
   },
   "rules": [
     {
