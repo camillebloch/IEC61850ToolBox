@@ -32,7 +32,9 @@ HARDCODED_PATCH_NAMES = {
 	"truncate-desc-255",
 	"schneider-redundant-ethernet",
 	"schneider-sv-cb-ref-normalization",
+	"schneider-clientln-order",
 }
+IED_NAME_MAX_LENGTH = 64
 
 
 def local_name(element):
@@ -225,6 +227,139 @@ def normalize_schneider_sv_cb_refs(root):
 						if replacement != value_element.text:
 							value_element.text = replacement
 							patched_paths.append(element_path(root, value_element))
+	return patched_paths
+
+
+def alpha_order_prefix(index, width):
+	"""Return a fixed-width, alphabetically sortable uppercase rank prefix."""
+	letters = []
+	value = index
+	for _ in range(width):
+		letters.append(chr(ord("A") + value % 26))
+		value //= 26
+	return "".join(reversed(letters))
+
+
+def order_schneider_clientln_ieds(root):
+	"""Prefix referenced IED names to preserve Schneider ClientLN list order."""
+	ieds = [element for element in root.iter() if local_name(element) == "IED"]
+	ied_by_name = {}
+	ied_order = {}
+	for index, ied in enumerate(ieds):
+		name = ied.get("name")
+		if not name:
+			continue
+		if name in ied_by_name:
+			raise ValueError(
+				"cannot order Schneider ClientLN references: duplicate IED "
+				"name {!r}".format(name))
+		ied_by_name[name] = ied
+		ied_order[name] = index
+
+	client_lists = []
+	for ied in ieds:
+		if ied.get("manufacturer") != "Schneider-Electric":
+			continue
+		for report_control in ied.iter():
+			if local_name(report_control) != "ReportControl":
+				continue
+			client_names = []
+			for client_ln in report_control.iter():
+				if local_name(client_ln) != "ClientLN":
+					continue
+				client_name = client_ln.get("iedName")
+				if not client_name:
+					continue
+				if client_name not in ied_by_name:
+					raise ValueError(
+						"cannot order Schneider ClientLN references: IED {!r} "
+						"does not exist in the SCD".format(client_name))
+				if not client_names or client_names[-1] != client_name:
+					client_names.append(client_name)
+			if len(client_names) != len(set(client_names)):
+				raise ValueError(
+					"cannot preserve a Schneider ClientLN list that repeats an IED "
+					"after a different client")
+			if client_names:
+				client_lists.append(client_names)
+
+	if not client_lists:
+		return []
+
+	clients = {name for names in client_lists for name in names}
+	outgoing = {name: set() for name in clients}
+	incoming_count = {name: 0 for name in clients}
+	for names in client_lists:
+		for before, after in zip(names, names[1:]):
+			if after not in outgoing[before]:
+				outgoing[before].add(after)
+				incoming_count[after] += 1
+
+	ordered_clients = []
+	remaining = set(clients)
+	while remaining:
+		ready = [name for name in remaining if incoming_count[name] == 0]
+		if not ready:
+			conflicting_names = ", ".join(
+				repr(name) for name in sorted(remaining, key=ied_order.__getitem__))
+			raise ValueError(
+				"Schneider ReportControl ClientLN lists impose conflicting IED order "
+				"({}); no single IED naming order can preserve them all".format(
+					conflicting_names))
+		name = min(ready, key=ied_order.__getitem__)
+		remaining.remove(name)
+		ordered_clients.append(name)
+		for following in outgoing[name]:
+			incoming_count[following] -= 1
+
+	prefix_width = 1
+	capacity = 26
+	while len(ordered_clients) > capacity:
+		prefix_width += 1
+		capacity *= 26
+	prefixes = {
+		name: alpha_order_prefix(index, prefix_width)
+		for index, name in enumerate(ordered_clients)
+	}
+
+	# Applying the patch repeatedly must not grow names with another rank prefix.
+	if all(
+		name.startswith(prefixes[name] + "_")
+		for name in ordered_clients
+	):
+		return []
+
+	existing_names = set(ied_by_name)
+	replacements = {}
+	for name in ordered_clients:
+		prefix = prefixes[name]
+		separator = "_"
+		if len(prefix) + len(separator) > IED_NAME_MAX_LENGTH:
+			raise ValueError(
+				"cannot prefix IED names for {} ClientLN entries within the "
+				"SCL IED-name length limit".format(len(ordered_clients)))
+		candidate = prefix + separator + name[
+			:IED_NAME_MAX_LENGTH - len(prefix) - len(separator)]
+		while candidate in existing_names or candidate in replacements.values():
+			separator += "_"
+			if len(prefix) + len(separator) > IED_NAME_MAX_LENGTH:
+				raise ValueError(
+					"cannot create unique prefixed IED names within the SCL "
+					"IED-name length limit")
+			candidate = prefix + separator + name[
+				:IED_NAME_MAX_LENGTH - len(prefix) - len(separator)]
+		replacements[name] = candidate
+
+	patched_paths = []
+	for name in ordered_clients:
+		ied = ied_by_name[name]
+		ied.set("name", replacements[name])
+		patched_paths.append(element_path(root, ied))
+	for element in root.iter():
+		referenced_name = element.get("iedName")
+		if referenced_name in replacements:
+			element.set("iedName", replacements[referenced_name])
+			patched_paths.append(element_path(root, element))
 	return patched_paths
 
 
@@ -624,6 +759,11 @@ def process_file(input_path, output_path, rules, hardcoded_patches):
 		for path, original_length in truncate_desc_attributes(tree.getroot()):
 			patches.append("truncate-desc-255: {} ({} -> 255 characters)".format(
 				path, original_length))
+	if hardcoded_patch_applies(
+		hardcoded_patches, "schneider-clientln-order", input_path
+	) and input_path.suffix.lower() == ".scd":
+		for path in order_schneider_clientln_ieds(tree.getroot()):
+			patches.append("schneider-clientln-order: {}".format(path))
 	ET.indent(tree, space="  ")
 	tree.write(output_path, encoding="utf-8", xml_declaration=True)
 	return patches

@@ -20,6 +20,8 @@ The tool provides three browser-based IEC 61850 workflows:
 
 The patch service must be reachable through the `VITE_PATCH_API_URL` environment variable. For local development, point it to `http://localhost:8000`. For GitHub Pages, use the public Render URL of the deployed backend. Parameterized rules default to enabled; each can be toggled independently, edited, and assigned its own extension list.
 
+The built-in **Schneider ClientLN order** patch is enabled for SCD files. It derives a single IED order from the `ClientLN` lists in Schneider-Electric `ReportControl` elements, then prefixes those IED names and updates their `iedName` references throughout the SCD. Names are kept within the SCL 64-character IED-name limit. If the lists impose contradictory ordering constraints, patching stops with an error rather than producing an order that cannot preserve every list.
+
 ## IED compatibility checker workflow
 
 1. Open the **IED compatibility Checker** tool.
