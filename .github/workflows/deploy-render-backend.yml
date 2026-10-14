@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - 36-new-patch-rename-clientln-to-keep-their-order-to-avoid-ples-reordering
+      - 38-new-patches
   workflow_dispatch:
 
 permissions:
