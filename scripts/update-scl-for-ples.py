@@ -365,26 +365,30 @@ def order_schneider_clientln_ieds(root):
 
 
 def delete_lnodes_without_ldevice(root):
-	"""Remove LNode references to IEDs that have no LDevice."""
-	ied_has_ldevice = {}
+	"""Remove LNode references whose IED lacks the referenced logical device."""
+	ldevice_instances_by_ied = {}
 	for ied in root.iter():
 		if local_name(ied) != "IED":
 			continue
 		name = ied.get("name")
 		if not name:
 			continue
-		has_ldevice = any(
-			local_name(element) == "LDevice" for element in ied.iter())
-		ied_has_ldevice[name] = ied_has_ldevice.get(name, False) or has_ldevice
+		instances = ldevice_instances_by_ied.setdefault(name, set())
+		instances.update(
+			element.get("inst")
+			for element in ied.iter()
+			if local_name(element) == "LDevice" and element.get("inst")
+		)
 
 	patched_paths = []
 	for lnode in list(root.iter()):
 		if local_name(lnode) != "LNode":
 			continue
 		ied_name = lnode.get("iedName")
-		if not ied_name or ied_name not in ied_has_ldevice:
-			continue
-		if ied_has_ldevice[ied_name]:
+		ld_inst = lnode.get("ldInst")
+		if (not ied_name or not ld_inst or
+			ied_name not in ldevice_instances_by_ied or
+			ld_inst in ldevice_instances_by_ied[ied_name]):
 			continue
 		parent = lnode.getparent()
 		if parent is None:

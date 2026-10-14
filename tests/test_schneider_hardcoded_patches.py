@@ -356,6 +356,7 @@ class DeleteLNodesWithoutLDeviceTest(unittest.TestCase):
               <Bay name="Bay1">
                 <LNode iedName="NoDevice" ldInst="LD0" lnClass="LLN0"/>
                 <LNode iedName="HasDevice" ldInst="LD0" lnClass="LLN0"/>
+                <LNode iedName="HasDevice" ldInst="LD1" lnClass="LLN0"/>
                 <LNode iedName="MissingIED" ldInst="LD0" lnClass="LLN0"/>
                 <LNode ldInst="LD0" lnClass="LLN0"/>
               </Bay>
@@ -364,7 +365,7 @@ class DeleteLNodesWithoutLDeviceTest(unittest.TestCase):
           <IED name="NoDevice">
             <AccessPoint name="AP1"><Server/></AccessPoint>
           </IED>
-          <IED name="HasDevice">
+          <IED name="HasDevice" manufacturer="OtherVendor">
             <AccessPoint name="AP1"><Server><LDevice inst="LD0"/></Server></AccessPoint>
           </IED>
         </SCL>"""
@@ -381,19 +382,19 @@ class DeleteLNodesWithoutLDeviceTest(unittest.TestCase):
             })
             return ET.parse(str(output_path))
 
-    def test_deletes_only_lnodes_referencing_ieds_without_ldevice(self):
+    def test_deletes_lnodes_without_matching_ldevice_on_any_ied(self):
         result = self.apply_patch()
         lnodes = result.xpath("//*[local-name()='LNode']")
         self.assertEqual(
-            [lnode.get("iedName") for lnode in lnodes],
-            ["HasDevice", "MissingIED", None],
+            [(lnode.get("iedName"), lnode.get("ldInst")) for lnode in lnodes],
+            [("HasDevice", "LD0"), ("MissingIED", "LD0"), (None, "LD0")],
         )
 
     def test_patch_is_filtered_to_scd_inputs(self):
         result = self.apply_patch(extension="icd")
         self.assertEqual(
             result.xpath("//*[local-name()='LNode']/@iedName"),
-            ["NoDevice", "HasDevice", "MissingIED"],
+            ["NoDevice", "HasDevice", "HasDevice", "MissingIED"],
         )
 
     def test_patch_is_enabled_for_scd_in_published_rules(self):

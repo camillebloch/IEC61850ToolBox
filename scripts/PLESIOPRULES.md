@@ -261,17 +261,17 @@ Elements that already contain a `Val`, reference no matching enum, or point to
 an enum with no values are left unchanged. Each added value is logged by its
 element path.
 
-## Rule 10: Delete LNode References to IEDs Without LDevices
+## Rule 10: Delete LNode References Without a Matching LDevice
 
 **Patch name:** `delete-lnodes-without-ldevice`
 
-For each `LNode` element with an `iedName`, the patch checks the matching
-`IED` elements in the SCD. It removes the `LNode` when at least one matching
-IED name exists and none of those IEDs contains an `LDevice`. `LNode` elements
-without an `iedName`, references to IED names not present in the file, and
-references to IEDs with an `LDevice` remain unchanged. Configure the patch
-with the `.scd` extension filter to limit it to SCD files; removed elements
-are recorded in `patch.log`.
+For each `LNode` with both `iedName` and `ldInst`, the patch checks whether the
+referenced IED exists and contains an `LDevice` whose `inst` equals that
+`ldInst`. If the IED exists but has no matching logical device, the `LNode` is
+removed. This applies to every IED, regardless of manufacturer. Unresolved IED
+references and `LNode` elements without either attribute are left unchanged.
+Configure the patch with the `.scd` extension filter to limit it to SCD files;
+removed elements are recorded in `patch.log`.
 
 ## Hardcoded Patch Switches
 
@@ -307,8 +307,8 @@ For each input file, transformations run in this order:
 4. Expand eligible single-value `DA` setting groups.
 5. Apply rules supplied through `--rules` and repeated `--rule` options.
 6. Truncate `desc` attributes longer than 255 characters.
-7. For configured SCD inputs, delete `LNode` references to IEDs without an
-   `LDevice`.
+7. For configured SCD inputs, delete `LNode` references without a matching
+   IED logical device.
 8. Write the output file.
 9. Append the applied patch paths to `patch.log` after a successful write.
 

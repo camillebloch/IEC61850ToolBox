@@ -22,7 +22,7 @@ The patch service must be reachable through the `VITE_PATCH_API_URL` environment
 
 The built-in **Schneider ClientLN order** patch is enabled for SCD files. It derives a single IED order from the `ClientLN` lists in Schneider-Electric `ReportControl` elements, then prefixes those IED names and updates their `iedName` references throughout the SCD. Names are kept within the SCL 64-character IED-name limit. If the lists impose contradictory ordering constraints, patching stops with an error rather than producing an order that cannot preserve every list.
 
-The **Delete LNodes without LDevices** patch is enabled for SCD files. It removes an `LNode` reference only when its `iedName` matches an `IED` that has no `LDevice`; references to unresolved IED names are left unchanged.
+The **Delete LNodes without matching LDevices** patch is enabled for SCD files. It removes an `LNode` when its `iedName` matches an IED but that IED has no `LDevice` whose `inst` matches the LNode's `ldInst`. This applies regardless of IED manufacturer. Unresolved IED references and LNodes without `ldInst` are left unchanged.
 
 ## IED compatibility checker workflow
 
