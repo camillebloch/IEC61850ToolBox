@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -29,6 +31,16 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Set application version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            commit_count="$(git rev-list --count HEAD)"
+            echo "VITE_APP_VERSION=1.0.${commit_count}" >> "$GITHUB_ENV"
+          else
+            echo "VITE_APP_VERSION=dev-${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+          fi
 
       - name: Build static site for Schneider Pages
         run: npm run build:schneider -- --outDir dist-schneider
