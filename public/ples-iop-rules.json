@@ -23,6 +23,10 @@
     },
     "schneider-sv-cb-ref-normalization": true,
     "schneider-clientln-order": {
+      "enabled": false,
+      "extensions": ["scd"]
+    },
+    "delete-lnodes-without-ldevice": {
       "enabled": true,
       "extensions": ["scd"]
     }
@@ -130,6 +134,12 @@
       "extensions": ["scd"],
       "search": "ENS_HEALTH",
       "replace": "ENS_HEALTH_P7"
+    },
+    {
+      "action": "delete",
+      "enabled": true,
+      "extensions": ["scd"],
+      "xpath": "//*[name()='esel:Inputs']"
     }
   ]
 }

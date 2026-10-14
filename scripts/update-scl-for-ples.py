@@ -33,6 +33,7 @@ HARDCODED_PATCH_NAMES = {
 	"schneider-redundant-ethernet",
 	"schneider-sv-cb-ref-normalization",
 	"schneider-clientln-order",
+	"delete-lnodes-without-ldevice",
 }
 IED_NAME_MAX_LENGTH = 64
 
@@ -360,6 +361,36 @@ def order_schneider_clientln_ieds(root):
 		if referenced_name in replacements:
 			element.set("iedName", replacements[referenced_name])
 			patched_paths.append(element_path(root, element))
+	return patched_paths
+
+
+def delete_lnodes_without_ldevice(root):
+	"""Remove LNode references to IEDs that have no LDevice."""
+	ied_has_ldevice = {}
+	for ied in root.iter():
+		if local_name(ied) != "IED":
+			continue
+		name = ied.get("name")
+		if not name:
+			continue
+		has_ldevice = any(
+			local_name(element) == "LDevice" for element in ied.iter())
+		ied_has_ldevice[name] = ied_has_ldevice.get(name, False) or has_ldevice
+
+	patched_paths = []
+	for lnode in list(root.iter()):
+		if local_name(lnode) != "LNode":
+			continue
+		ied_name = lnode.get("iedName")
+		if not ied_name or ied_name not in ied_has_ldevice:
+			continue
+		if ied_has_ldevice[ied_name]:
+			continue
+		parent = lnode.getparent()
+		if parent is None:
+			continue
+		patched_paths.append(element_path(root, lnode))
+		parent.remove(lnode)
 	return patched_paths
 
 
@@ -764,6 +795,10 @@ def process_file(input_path, output_path, rules, hardcoded_patches):
 	) and input_path.suffix.lower() == ".scd":
 		for path in order_schneider_clientln_ieds(tree.getroot()):
 			patches.append("schneider-clientln-order: {}".format(path))
+	if hardcoded_patch_applies(
+		hardcoded_patches, "delete-lnodes-without-ldevice", input_path):
+		for path in delete_lnodes_without_ldevice(tree.getroot()):
+			patches.append("delete-lnodes-without-ldevice: {}".format(path))
 	ET.indent(tree, space="  ")
 	tree.write(output_path, encoding="utf-8", xml_declaration=True)
 	return patches

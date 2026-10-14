@@ -261,15 +261,31 @@ Elements that already contain a `Val`, reference no matching enum, or point to
 an enum with no values are left unchanged. Each added value is logged by its
 element path.
 
+## Rule 10: Delete LNode References to IEDs Without LDevices
+
+**Patch name:** `delete-lnodes-without-ldevice`
+
+For each `LNode` element with an `iedName`, the patch checks the matching
+`IED` elements in the SCD. It removes the `LNode` when at least one matching
+IED name exists and none of those IEDs contains an `LDevice`. `LNode` elements
+without an `iedName`, references to IED names not present in the file, and
+references to IEDs with an `LDevice` remain unchanged. Configure the patch
+with the `.scd` extension filter to limit it to SCD files; removed elements
+are recorded in `patch.log`.
+
 ## Hardcoded Patch Switches
 
 Each hardcoded patch can be independently enabled, disabled, and file-filtered
 in the top-level `hardcodedPatches` object in the JSON rule file. A patch value
 may be a boolean or an object with `enabled` and optional `extensions` fields.
 If `extensions` is omitted or empty, that patch has no file-type filter. The
-available names are `remove-unused-data-type-templates`, `add-empty-lpl-das`,
+available names include `remove-unused-data-type-templates`, `add-empty-lpl-das`,
 `add-enum-default-values`, `expand-single-val-sgroups`, and
 `truncate-desc-255`. Omitted switches default to enabled.
+
+Additional built-in switches are `schneider-redundant-ethernet`,
+`schneider-sv-cb-ref-normalization`, `schneider-clientln-order`, and
+`delete-lnodes-without-ldevice`.
 
 For example, the two ICD/IID-only patches are configured with an extension
 filter, while the other built-in patches run on any file type unless filtered:
@@ -291,8 +307,10 @@ For each input file, transformations run in this order:
 4. Expand eligible single-value `DA` setting groups.
 5. Apply rules supplied through `--rules` and repeated `--rule` options.
 6. Truncate `desc` attributes longer than 255 characters.
-7. Write the output file.
-8. Append the applied patch paths to `patch.log` after a successful write.
+7. For configured SCD inputs, delete `LNode` references to IEDs without an
+   `LDevice`.
+8. Write the output file.
+9. Append the applied patch paths to `patch.log` after a successful write.
 
 ## Configurable Rules
 

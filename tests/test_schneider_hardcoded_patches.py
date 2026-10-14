@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import tempfile
 import unittest
 from copy import deepcopy
@@ -344,6 +345,65 @@ class SchneiderHardcodedPatchTest(unittest.TestCase):
         self.assertNotIn(
             "A_ClientC",
             result.xpath("//*[local-name()='IED']/@name"),
+        )
+
+
+class DeleteLNodesWithoutLDeviceTest(unittest.TestCase):
+    def apply_patch(self, extension="scd"):
+        xml = """<SCL xmlns="urn:iec:61850:2003:SCL">
+          <Substation name="Substation1">
+            <VoltageLevel name="VoltageLevel1">
+              <Bay name="Bay1">
+                <LNode iedName="NoDevice" ldInst="LD0" lnClass="LLN0"/>
+                <LNode iedName="HasDevice" ldInst="LD0" lnClass="LLN0"/>
+                <LNode iedName="MissingIED" ldInst="LD0" lnClass="LLN0"/>
+                <LNode ldInst="LD0" lnClass="LLN0"/>
+              </Bay>
+            </VoltageLevel>
+          </Substation>
+          <IED name="NoDevice">
+            <AccessPoint name="AP1"><Server/></AccessPoint>
+          </IED>
+          <IED name="HasDevice">
+            <AccessPoint name="AP1"><Server><LDevice inst="LD0"/></Server></AccessPoint>
+          </IED>
+        </SCL>"""
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            source_path = directory / f"source.{extension}"
+            output_path = directory / f"output.{extension}"
+            source_path.write_text(xml, encoding="utf-8")
+            PATCHER.process_file(source_path, output_path, [], {
+                "delete-lnodes-without-ldevice": {
+                    "enabled": True,
+                    "extensions": ["scd"],
+                },
+            })
+            return ET.parse(str(output_path))
+
+    def test_deletes_only_lnodes_referencing_ieds_without_ldevice(self):
+        result = self.apply_patch()
+        lnodes = result.xpath("//*[local-name()='LNode']")
+        self.assertEqual(
+            [lnode.get("iedName") for lnode in lnodes],
+            ["HasDevice", "MissingIED", None],
+        )
+
+    def test_patch_is_filtered_to_scd_inputs(self):
+        result = self.apply_patch(extension="icd")
+        self.assertEqual(
+            result.xpath("//*[local-name()='LNode']/@iedName"),
+            ["NoDevice", "HasDevice", "MissingIED"],
+        )
+
+    def test_patch_is_enabled_for_scd_in_published_rules(self):
+        repository_root = Path(__file__).resolve().parents[1]
+        with (repository_root / "public" / "ples-iop-rules.json").open(
+                encoding="utf-8") as rules_file:
+            rules = json.load(rules_file)
+        self.assertEqual(
+            rules["hardcodedPatches"]["delete-lnodes-without-ldevice"],
+            {"enabled": True, "extensions": ["scd"]},
         )
 
 
