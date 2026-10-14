@@ -100,6 +100,9 @@ export default function App() {
           <div className="w-2 h-8 bg-cyan-400" />
           <div>
             <h1 className="text-lg font-bold tracking-widest text-cyan-400 uppercase">IEC 61850</h1>
+            <p className="text-[10px] tracking-wider text-slate-500">
+              Version {import.meta.env.VITE_APP_VERSION || 'local'}
+            </p>
           </div>
         </div>
 

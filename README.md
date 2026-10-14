@@ -37,6 +37,10 @@ https://milka34Fr.github.io/IEC61850ToolBox/
 
 The frontend is configured to call the Python patch backend via the GitHub Actions secret `VITE_PATCH_API_URL`. Set this repository secret to the public Render URL before deploying the Pages app so the browser points to the correct backend service.
 
+GitHub Pages builds from `main` display an automatically generated version in
+the header using `1.0.<main commit count>`. The count advances with commits on
+`main`; builds from other branches show a `dev-<commit>` identifier instead.
+
 The workflow can also be started manually from the GitHub Actions tab.
 
 ## Documentation
